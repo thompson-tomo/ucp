@@ -4,7 +4,7 @@
 
 Embedded Checkout Protocol (ECP) is a checkout-specific implementation of UCP's Embedded Protocol (EP) transport binding that enables a **host** to embed a **business's** checkout interface, receive events as the buyer interacts with the checkout, and delegate key user actions such as address and payment selection. ECP is a transport binding (like REST)—it defines **how** to communicate, not **what** data exists.
 
-#### W3C Payment Request Conceptual Alignment
+### W3C Payment Request Conceptual Alignment
 
 ECP draws inspiration from the **[W3C Payment Request API](https://www.w3.org/TR/payment-request/)**, adapting its mental model for embedded checkout scenarios. Developers familiar with Payment Request will recognize similar patterns, though the execution model differs:
 
@@ -384,24 +384,19 @@ The host **MAY** also respond with a `checkout` object, which will be used to po
     "result": {
         "checkout": {
             "payment": {
+                "selected_instrument_id": "payment_instrument_123",
+                // The instrument structure is defined by the handler's instrument schema
                 "instruments": [
                     {
-                        "type": "card",
-                        "status": "created",
-                        "handler_id": "merchant_psp_handler",
                         "id": "payment_instrument_123",
-                        "account_info": {
-                            "payment_account_reference": "V0010010000000000000000000000",
-                            "fingerprint": "xyz_123"
-                        },
-                        "display_data": {
-                            "summary": "Visa •••• 1111",
-                            "brand": "visa",
-                            "last_digits": "1111",
-                            "expiry_month": 12,
-                            "expiry_year": 2025,
-                            "card_art_url": "https://host.com/cards/visa-gold.png"
-                        }
+                        "handler_id": "merchant_psp_handler_123",
+                        "type": "card",
+                        "brand": "visa",
+                        "expiry_month": 12,
+                        "expiry_year": 2026,
+                        "last_digits": "1111",
+                        "rich_text_description": "Visa •••• 1111",
+                        "rich_card_art": "https://host.com/cards/visa-gold.png"
                     }
                 ]
             }
@@ -683,17 +678,18 @@ The host **MUST** respond with either an error, or the newly-selected payment in
         "checkout": {
             "payment": {
                 "selected_instrument_id": "payment_instrument_123",
+                // The instrument structure is defined by the handler's instrument schema
                 "instruments": [
                     {
                         "id": "payment_instrument_123",
-                        "handler_id": "merchant_psp_handler",
+                        "handler_id": "merchant_psp_handler_123",
                         "type": "card",
                         "brand": "visa",
-                        "last_digits": "1111",
                         "expiry_month": 12,
-                        "expiry_year": 2025,
-                        "summary": "Visa •••• 1111",
-                        "card_art_url": "https://host.com/cards/visa-gold.png"
+                        "expiry_year": 2026,
+                        "last_digits": "1111",
+                        "rich_text_description": "Visa •••• 1111",
+                        "rich_card_art": "https://host.com/cards/visa-gold.png"
                         // No `credential` yet; it will be attached in the `ec.payment.credential_request` response
                     }
                 ]
@@ -767,20 +763,22 @@ The host **MUST** respond with either an error, or the credential for the select
     "result": {
         "checkout": {
             "payment": {
+                "selected_instrument_id": "payment_instrument_123",
                 "instruments": [
-                    // Instrument schema is determined by the payment handler's instrument_schemas
                     {
                         "id": "payment_instrument_123",
-                        "handler_id": "gpay",
+                        "handler_id": "merchant_psp_handler_123",
                         "type": "card",
                         "brand": "visa",
-                        "last_digits": "1234",
                         "expiry_month": 12,
                         "expiry_year": 2026,
+                        "last_digits": "1111",
+                        "rich_text_description": "Visa •••• 1111",
+                        "rich_card_art": "https://host.com/cards/visa-gold.png",
                         // The credential structure is defined by the handler's instrument schema
                         "credential": {
-                            "type": "PAYMENT_GATEWAY",
-                            "token": "{\"id\": \"tok_123\", \"object\": \"token\"...}"
+                            "type": "token",
+                            "token": "tok_123"
                         }
                     }
                 ]
