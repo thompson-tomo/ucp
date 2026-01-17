@@ -43,8 +43,8 @@
           "type": "object",
           "description": "Entity-specific configuration. Structure defined by each entity's schema.",
           "additionalProperties": true
-        }
-      }
+        
+      
     },
     "base": {
       "description": "Base UCP metadata with shared properties for all schema types.",
@@ -66,8 +66,8 @@
             "type": "array",
             "items": {
               "$ref": "service.json#/$defs/base"
-            }
-          }
+            
+          
         },
         "capabilities": {
           "type": "object",
@@ -79,8 +79,8 @@
             "type": "array",
             "items": {
               "$ref": "capability.json#/$defs/base"
-            }
-          }
+            
+          
         },
         "payment_handlers": {
           "type": "object",
@@ -92,10 +92,10 @@
             "type": "array",
             "items": {
               "$ref": "payment_handler.json#/$defs/base"
-            }
-          }
-        }
-      }
+            
+          
+        
+      
     },
     "platform_schema": {
       "title": "UCP Platform Schema",
@@ -114,25 +114,25 @@
               "additionalProperties": {
                 "items": {
                   "$ref": "service.json#/$defs/platform_schema"
-                }
-              }
+                
+              
             },
             "capabilities": {
               "additionalProperties": {
                 "items": {
                   "$ref": "capability.json#/$defs/platform_schema"
-                }
-              }
+                
+              
             },
             "payment_handlers": {
               "additionalProperties": {
                 "items": {
                   "$ref": "payment_handler.json#/$defs/platform_schema"
-                }
-              }
-            }
-          }
-        }
+                
+              
+            
+          
+        
       ]
     },
     "business_schema": {
@@ -152,25 +152,25 @@
               "additionalProperties": {
                 "items": {
                   "$ref": "service.json#/$defs/business_schema"
-                }
-              }
+                
+              
             },
             "capabilities": {
               "additionalProperties": {
                 "items": {
                   "$ref": "capability.json#/$defs/business_schema"
-                }
-              }
+                
+              
             },
             "payment_handlers": {
               "additionalProperties": {
                 "items": {
                   "$ref": "payment_handler.json#/$defs/business_schema"
-                }
-              }
-            }
-          }
-        }
+                
+              
+            
+          
+        
       ]
     },
     "response_checkout_schema": {
@@ -189,23 +189,45 @@
               "additionalProperties": {
                 "items": {
                   "$ref": "capability.json#/$defs/response_schema"
-                }
-              }
+                
+              
             },
             "payment_handlers": {
               "additionalProperties": {
                 "items": {
                   "$ref": "payment_handler.json#/$defs/response_schema"
-                }
-              }
-            }
-          }
-        }
+                
+              
+            
+          
+        
       ]
     },
     "response_order_schema": {
       "title": "UCP Order Response Schema",
       "description": "UCP metadata for order responses. No payment handlers needed post-purchase.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/base"
+        },
+        {
+          "properties": {
+            "capabilities": {
+              "additionalProperties": {
+                "items": {
+                  "$ref": "capability.json#/$defs/response_schema"
+                
+              
+            
+          
+        
+      ]
+    
+  
+    },
+    "response_cart_schema": {
+      "title": "UCP Cart Response Schema",
+      "description": "UCP metadata for cart responses. No payment handlers needed pre-checkout.",
       "allOf": [
         {
           "$ref": "#/$defs/base"
