@@ -28,7 +28,7 @@
       "description": "AP2 extension data including checkout mandate.",
       "properties": {}
     },
-    "checkout": {
+    "dev.ucp.shopping.checkout": {
       "title": "Checkout with AP2 Mandate Create Request",
       "description": "Checkout extended with AP2 mandate support.",
       "allOf": [

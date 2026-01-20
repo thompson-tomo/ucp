@@ -21,7 +21,7 @@
     "fulfillment": {
       "$ref": "types/fulfillment_req.json"
     },
-    "checkout": {
+    "dev.ucp.shopping.checkout": {
       "title": "Checkout with Fulfillment Create Request",
       "description": "Checkout extended with hierarchical fulfillment.",
       "allOf": [

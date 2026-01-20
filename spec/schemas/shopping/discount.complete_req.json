@@ -94,7 +94,7 @@
         }
       }
     },
-    "checkout": {
+    "dev.ucp.shopping.checkout": {
       "title": "Checkout with Discount Complete Request",
       "description": "Checkout extended with discount capability.",
       "allOf": [

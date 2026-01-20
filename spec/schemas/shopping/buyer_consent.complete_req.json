@@ -46,7 +46,7 @@
         }
       ]
     },
-    "checkout": {
+    "dev.ucp.shopping.checkout": {
       "title": "Checkout with Buyer Consent Complete Request",
       "description": "Checkout extended with consent tracking via buyer object.",
       "allOf": [
