@@ -635,11 +635,11 @@ root capability.
 
 **Selection Examples:**
 
-| Response Type | Includes | Does NOT Include |
-|---------------|----------|------------------|
-| Checkout | checkout, discount, fulfillment | cart, order |
-| Cart | cart, discount | checkout, fulfillment, order |
-| Order | order | checkout, cart, discount |
+| Response Type | Includes                        | Does NOT Include             |
+| ------------- | ------------------------------- | ---------------------------- |
+| Checkout      | checkout, discount, fulfillment | cart, order                  |
+| Cart          | cart, discount                  | checkout, fulfillment, order |
+| Order         | order                           | checkout, cart, discount     |
 
 ## Payment Architecture
 
