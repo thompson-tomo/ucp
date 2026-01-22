@@ -91,11 +91,11 @@ UCP Capabilities map 1:1 to MCP Tools.
 
 MCP tools separate resource identification from payload data:
 
-*   **Requests:** For operations on existing carts (`get`, `update`, `cancel`),
+* **Requests:** For operations on existing carts (`get`, `update`, `cancel`),
     a top-level `id` parameter identifies the target resource. The `cart`
     object in the request payload **MUST NOT** contain an `id` field.
-*   **Responses:** All responses include `cart.id` as part of the full resource state.
-*   **Create:** The `create_cart` operation does not require an `id` in the
+* **Responses:** All responses include `cart.id` as part of the full resource state.
+* **Create:** The `create_cart` operation does not require an `id` in the
     request, and the response includes the newly assigned `cart.id`.
 
 | Tool | Operation | Description |
@@ -211,7 +211,7 @@ Maps to the [Get Cart](cart.md#get-cart) operation.
 
 #### Input Schema
 
-*   `id` (String, required): The ID of the cart session.
+* `id` (String, required): The ID of the cart session.
 
 #### Output Schema
 
@@ -309,7 +309,7 @@ Maps to the [Update Cart](cart.md#update-cart) operation.
 
 #### Input Schema
 
-*   `id` (String, required): The ID of the cart session to update.
+* `id` (String, required): The ID of the cart session to update.
 
 {{ schema_fields('cart.update_req', 'cart') }}
 
@@ -430,8 +430,8 @@ Maps to the [Cancel Cart](cart.md#cancel-cart) operation.
 
 #### Input Schema
 
-*   `id` (String, required): The ID of the cart session.
-*   `idempotency_key` (String, UUID, required): Unique key for retry safety.
+* `id` (String, required): The ID of the cart session.
+* `idempotency_key` (String, UUID, required): Unique key for retry safety.
 
 #### Output Schema
 
@@ -559,8 +559,8 @@ succeeds and returns the cart state with messages indicating issues:
 
 A conforming MCP transport implementation **MUST**:
 
-1.  Implement JSON-RPC 2.0 protocol correctly.
-2.  Provide all core cart tools defined in this specification.
-3.  Handle errors with appropriate JSON-RPC error codes.
-4.  Validate tool inputs against UCP schemas.
-5.  Support HTTP transport with streaming.
+1. Implement JSON-RPC 2.0 protocol correctly.
+2. Provide all core cart tools defined in this specification.
+3. Handle errors with appropriate JSON-RPC error codes.
+4. Validate tool inputs against UCP schemas.
+5. Support HTTP transport with streaming.

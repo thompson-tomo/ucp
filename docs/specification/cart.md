@@ -28,23 +28,23 @@ collection before purchase intent is established.
 
 **When to use Cart vs Checkout:**
 
-- **Cart**: User is exploring, comparing, saving items for later. No payment
+* **Cart**: User is exploring, comparing, saving items for later. No payment
   configuration needed. Platform/agent can freely add, remove, update items.
-- **Checkout**: User has expressed purchase intent. Payment handlers are
+* **Checkout**: User has expressed purchase intent. Payment handlers are
   configured, status lifecycle begins, session moves toward completion.
 
 The typical flow: `cart session` &#8594; `checkout session` &#8594; `order`
 
 Carts support:
 
-- **Incremental building**: Add/remove items across sessions
-- **Localized estimates**: Context-aware pricing without full checkout overhead
-- **Sharing**: `continue_url` enables cart sharing and recovery
+* **Incremental building**: Add/remove items across sessions
+* **Localized estimates**: Context-aware pricing without full checkout overhead
+* **Sharing**: `continue_url` enables cart sharing and recovery
 
 ## Cart vs Checkout
 
 | Aspect | Cart | Checkout |
-|--------|------|----------|
+| ------ | ---- | -------- |
 | **Purpose** | Pre-purchase exploration | Purchase finalization |
 | **Payment** | None | Required (handlers, instruments) |
 | **Status** | Binary (exists/not found) | Lifecycle (`incomplete` → `completed`) |
@@ -79,34 +79,34 @@ ensures a single active checkout per cart and prevents conflicting sessions.
 When checkout is initialized via `cart_id`, the cart and checkout sessions
 SHOULD be linked for the duration of the checkout.
 
-*   **During active checkout** — Business SHOULD maintain the cart and reflect
+* **During active checkout** — Business SHOULD maintain the cart and reflect
     relevant checkout modifications (quantity changes, item removals) back to
     the cart. This supports back-to-storefront flows when buyers transition
     between checkout and storefront.
 
-*   **After checkout completion** — Business MAY clear the cart based on TTL,
+* **After checkout completion** — Business MAY clear the cart based on TTL,
     completion of the checkout, or other business logic. Subsequent operations
     on a cleared cart ID return 404; the platform can start a new session with
     `create_cart`.
 
 ## Guidelines
 
-**Platform**
+### Platform
 
-*   **MAY** use carts for pre-purchase exploration and session persistence.
-*   **SHOULD** convert cart to checkout when user expresses purchase intent.
-*   **MAY** display `continue_url` for handoff to business UI.
-*   **SHOULD** handle 404 gracefully when cart expires or is canceled.
+* **MAY** use carts for pre-purchase exploration and session persistence.
+* **SHOULD** convert cart to checkout when user expresses purchase intent.
+* **MAY** display `continue_url` for handoff to business UI.
+* **SHOULD** handle 404 gracefully when cart expires or is canceled.
 
-**Business**
+### Business
 
-*   **SHOULD** provide `continue_url` for cart handoff and session recovery.
-*   TODO: discuss `continue_url` destination - cart vs checkout.
-*   **SHOULD** provide estimated totals when calculable.
-*   **MAY** omit fulfillment totals until checkout when address is unknown.
-*   **SHOULD** return informational messages for validation warnings.
-*   **MAY** set cart expiry via `expires_at`.
-*   **SHOULD** follow [cart lifecycle requirements](#cart-to-checkout-conversion)
+* **SHOULD** provide `continue_url` for cart handoff and session recovery.
+* TODO: discuss `continue_url` destination - cart vs checkout.
+* **SHOULD** provide estimated totals when calculable.
+* **MAY** omit fulfillment totals until checkout when address is unknown.
+* **SHOULD** return informational messages for validation warnings.
+* **MAY** set cart expiry via `expires_at`.
+* **SHOULD** follow [cart lifecycle requirements](#cart-to-checkout-conversion)
     when checkout is initialized via `cart_id`.
 
 ## Cart Schema Definition
@@ -129,16 +129,16 @@ The Cart capability defines the following logical operations.
 Creates a new cart session with line items and optional buyer/context
 information for localized pricing estimates.
 
-*   [REST Binding](cart-rest.md#create-cart)
-*   [MCP Binding](cart-mcp.md#create_cart)
+* [REST Binding](cart-rest.md#create-cart)
+* [MCP Binding](cart-mcp.md#create_cart)
 
 ### Get Cart
 
 Retrieves the latest state of a cart session. Returns 404 if the cart
 does not exist, has expired, or was canceled.
 
-*   [REST Binding](cart-rest.md#get-cart)
-*   [MCP Binding](cart-mcp.md#get_cart)
+* [REST Binding](cart-rest.md#get-cart)
+* [MCP Binding](cart-mcp.md#get_cart)
 
 ### Update Cart
 
@@ -146,16 +146,16 @@ Performs a full replacement of the cart session. The platform **MUST** send
 the entire cart resource. The provided resource replaces the existing cart
 state on the business side.
 
-*   [REST Binding](cart-rest.md#update-cart)
-*   [MCP Binding](cart-mcp.md#update_cart)
+* [REST Binding](cart-rest.md#update-cart)
+* [MCP Binding](cart-mcp.md#update_cart)
 
 ### Cancel Cart
 
 Cancels a cart session. Business MUST return the cart state before deletion.
 Subsequent operations for this cart ID SHOULD return 404.
 
-*   [REST Binding](cart-rest.md#cancel-cart)
-*   [MCP Binding](cart-mcp.md#cancel_cart)
+* [REST Binding](cart-rest.md#cancel-cart)
+* [MCP Binding](cart-mcp.md#cancel_cart)
 
 ## Entities
 

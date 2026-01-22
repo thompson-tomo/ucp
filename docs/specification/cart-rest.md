@@ -65,8 +65,8 @@ cart capability is defined in the `rest.endpoint` field of the business profile.
 
 ### Content Types
 
-*   **Request**: `application/json`
-*   **Response**: `application/json`
+* **Request**: `application/json`
+* **Response**: `application/json`
 
 All request and response bodies **MUST** be valid JSON as specified in
 [RFC 8259](https://tools.ietf.org/html/rfc8259){ target="_blank" }.
@@ -177,7 +177,7 @@ All REST endpoints **MUST** be served over HTTPS with minimum TLS version 1.3.
 
 #### Input Schema
 
-*   `id` (String, required): The cart session ID (path parameter).
+* `id` (String, required): The cart session ID (path parameter).
 
 #### Output Schema
 
@@ -254,7 +254,7 @@ All REST endpoints **MUST** be served over HTTPS with minimum TLS version 1.3.
 
 #### Input Schema
 
-*   `id` (String, required): The cart session ID (path parameter).
+* `id` (String, required): The cart session ID (path parameter).
 
 {{ schema_fields('cart.update_req', 'cart') }}
 
@@ -366,7 +366,7 @@ All REST endpoints **MUST** be served over HTTPS with minimum TLS version 1.3.
 
 #### Input Schema
 
-*   `id` (String, required): The cart session ID (path parameter).
+* `id` (String, required): The cart session ID (path parameter).
 
 #### Output Schema
 
@@ -444,15 +444,15 @@ operations unless otherwise noted.
 
 ### Specific Header Requirements
 
-*   **UCP-Agent**: All requests **MUST** include the `UCP-Agent` header
+* **UCP-Agent**: All requests **MUST** include the `UCP-Agent` header
     containing the platform profile URI using Dictionary Structured Field syntax
     ([RFC 8941](https://datatracker.ietf.org/doc/html/rfc8941){target="_blank"}).
     Format: `profile="https://platform.example/profile"`.
-*   **Idempotency-Key**: Operations that modify state **SHOULD** support
+* **Idempotency-Key**: Operations that modify state **SHOULD** support
     idempotency. When provided, the server **MUST**:
-    1.  Store the key with the operation result for at least 24 hours.
-    2.  Return the cached result for duplicate keys.
-    3.  Return `409 Conflict` if the key is reused with different parameters.
+    1. Store the key with the operation result for at least 24 hours.
+    2. Return the cached result for duplicate keys.
+    3. Return `409 Conflict` if the key is reused with different parameters.
 
 ## Protocol Mechanics
 
@@ -507,11 +507,11 @@ Content-Type: application/json
 Authentication is optional and depends on business requirements. When
 authentication is required, the REST transport **MAY** use:
 
-1.  **Open API**: No authentication required for public operations.
-2.  **API Keys**: Via `X-API-Key` header.
-3.  **OAuth 2.0**: Via `Authorization: Bearer {token}` header, following
+1. **Open API**: No authentication required for public operations.
+2. **API Keys**: Via `X-API-Key` header.
+3. **OAuth 2.0**: Via `Authorization: Bearer {token}` header, following
     [RFC 6749](https://tools.ietf.org/html/rfc6749){ target="_blank" }.
-4.  **Mutual TLS**: For high-security environments.
+4. **Mutual TLS**: For high-security environments.
 
 Businesses **MAY** require authentication for some operations while leaving
 others open (e.g., public cart without authentication).
