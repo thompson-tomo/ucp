@@ -32,7 +32,7 @@
   "additionalProperties": true,
   "properties": {
     "ucp": {
-      "$ref": "../ucp.json#/$defs/response_cart",
+      "$ref": "../ucp.json#/$defs/response_cart_schema",
       "ucp_request": "omit"
     },
     "id": {
