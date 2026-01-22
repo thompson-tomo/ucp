@@ -142,8 +142,8 @@ Maps to the [Create Cart](cart.md#create-cart) operation.
             }
           ],
           "context": {
-            "country": "US",
-            "region": "CA",
+            "address_country": "US",
+            "address_region": "CA",
             "postal_code": "94105"
           }
         }
@@ -348,8 +348,8 @@ Maps to the [Update Cart](cart.md#update-cart) operation.
             }
           ],
           "context": {
-            "country": "US",
-            "region": "CA",
+            "address_country": "US",
+            "address_region": "CA",
             "postal_code": "94105"
           }
         }

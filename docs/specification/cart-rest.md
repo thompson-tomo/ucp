@@ -113,8 +113,8 @@ All REST endpoints **MUST** be served over HTTPS with minimum TLS version 1.3.
         }
       ],
       "context": {
-        "country": "US",
-        "region": "CA",
+        "address_country": "US",
+        "address_region": "CA",
         "postal_code": "94105"
       }
     }
@@ -290,8 +290,8 @@ All REST endpoints **MUST** be served over HTTPS with minimum TLS version 1.3.
         }
       ],
       "context": {
-        "country": "US",
-        "region": "CA",
+        "address_country": "US",
+        "address_region": "CA",
         "postal_code": "94105"
       }
     }
