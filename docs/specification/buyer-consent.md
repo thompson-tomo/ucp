@@ -16,8 +16,6 @@
 
 # Buyer Consent Extension
 
-**Version:** `2026-01-11`
-
 ## Overview
 
 The Buyer Consent extension enables platforms to transmit buyer consent choices
@@ -61,7 +59,7 @@ The consent extension extends the **buyer object** within checkout:
 
 ### Consent Object
 
-{{ extension_schema_fields('buyer_consent_resp.json#/$defs/consent', 'buyer-consent') }}
+{{ extension_schema_fields('buyer_consent.json#/$defs/consent', 'buyer-consent') }}
 
 ## Usage
 
@@ -133,4 +131,3 @@ POST /checkouts
 2. **Legal compliance** remains the business's responsibility
 3. **Platforms should not** assume consent without explicit user action
 4. **Default behavior** when consent is not provided is business-specific
-5. **Consent states** should align with actual user choices, not platform defaults

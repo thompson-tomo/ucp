@@ -17,7 +17,6 @@
 # Encrypted Credential Handler
 
 * **Handler Name:** `com.example.encrypted_credential`
-* **Version:** `2026-01-11`
 * **Type:** Payment Handler Example
 
 ## Introduction
@@ -60,33 +59,33 @@ Compliance requirements vary by credential type.
 ### Pattern Flow
 
 ```text
-┌─────────────────┐                              ┌────────────┐
-│  Platform       │                              │  Business  │
-│                 │                              │            │
-└────────┬────────┘                              └──────┬─────┘
-         │                                              │
-         │  1. Business registers public key (out-of-band)
-         │<─────────────────────────────────────────────│
-         │                                              │
-         │  2. Confirmation                             │
-         │─────────────────────────────────────────────>│
-         │                                              │
-         │  3. GET ucp.payment_handlers                 │
-         │─────────────────────────────────────────────>│
-         │                                              │
-         │  4. Handler with business identity           │
-         │<─────────────────────────────────────────────│
-         │                                              │
-         │  5. Platform's vaulting service encrypts     │
-         │     credential with business's key           │
-         │                                              │
-         │  6. POST checkout with EncryptedCredential   │
-         │─────────────────────────────────────────────>│
-         │                                              │
-         │       (Business decrypts locally)            │
-         │                                              │
-         │  7. Checkout complete                        │
-         │<─────────────────────────────────────────────│
++-----------------+                              +------------+
+|  Platform       |                              |  Business  |
+|                 |                              |            |
++--------+--------+                              +------+-----+
+         |                                              |
+         |  1. Business registers public key (out-of-band)
+         |<---------------------------------------------|
+         |                                              |
+         |  2. Confirmation                             |
+         |--------------------------------------------->|
+         |                                              |
+         |  3. GET ucp.payment_handlers                 |
+         |--------------------------------------------->|
+         |                                              |
+         |  4. Handler with business identity           |
+         |<---------------------------------------------|
+         |                                              |
+         |  5. Platform's vaulting service encrypts     |
+         |     credential with business's key           |
+         |                                              |
+         |  6. POST checkout with EncryptedCredential   |
+         |--------------------------------------------->|
+         |                                              |
+         |       (Business decrypts locally)            |
+         |                                              |
+         |  7. Checkout complete                        |
+         |<---------------------------------------------|
 ```
 
 ---

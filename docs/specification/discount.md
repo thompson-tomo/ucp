@@ -16,8 +16,6 @@
 
 # Discount Extension
 
-**Version:** `2026-01-11`
-
 ## Overview
 
 Discount extension allows businesses to indicate that they support discount
@@ -63,15 +61,15 @@ When this capability is active, checkout is extended with a `discounts` object.
 
 ### Discounts Object
 
-{{ extension_schema_fields('discount_resp.json#/$defs/discounts_object', 'discount') }}
+{{ extension_schema_fields('discount.json#/$defs/discounts_object', 'discount') }}
 
 ### Applied Discount
 
-{{ extension_schema_fields('discount_resp.json#/$defs/applied_discount', 'discount') }}
+{{ extension_schema_fields('discount.json#/$defs/applied_discount', 'discount') }}
 
 ### Allocation
 
-{{ extension_schema_fields('discount_resp.json#/$defs/allocation', 'discount') }}
+{{ extension_schema_fields('discount.json#/$defs/allocation', 'discount') }}
 
 ## Allocation Details
 
@@ -425,4 +423,3 @@ Multiple discounts applied with full allocation breakdown:
 
 With this data, an agent can explain:
 > "Your T-Shirt ($60) got $12 off from the 20% summer sale, plus $3 from your
-> loyalty reward (split proportionally). Total savings on this item: $15."

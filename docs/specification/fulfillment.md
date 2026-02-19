@@ -16,8 +16,6 @@
 
 # Fulfillment Extension
 
-**Version:** `2026-01-11`
-
 ## Overview
 
 The fulfillment extension enables businesses to advertise support for physical
@@ -54,7 +52,7 @@ method.
 
 ### Properties
 
-{{ extension_fields('fulfillment_resp', 'fulfillment') }}
+{{ extension_fields('fulfillment', 'fulfillment') }}
 
 ### Entities
 

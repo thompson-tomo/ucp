@@ -17,7 +17,6 @@
 # Processor Tokenizer Payment Handler
 
 * **Handler Name:** `com.example.processor_tokenizer`
-* **Version:** `2026-01-11`
 * **Type:** Payment Handler Example
 
 ## Introduction
@@ -61,30 +60,30 @@ happens internally within the Processor's secure environment.
 ### Pattern Flow
 
 ```text
-┌────────────┐                         ┌───────────────────────────────────┐
-│  Platform  │                         │       Tokenizer / Processor       │
-│ (Collector)│                         │      (Business or PSP)            │
-└─────┬──────┘                         └─────────────────┬─────────────────┘
-      │                                                  │
-      │  1. GET ucp.payment_handlers                     │
-      │─────────────────────────────────────────────────>│
-      │                                                  │
-      │  2. Handler Config (URL + Identity)              │
-      │<─────────────────────────────────────────────────│
-      │                                                  │
-      │  3. POST /tokenize (Credential + Identity)       │
-      │─────────────────────────────────────────────────>│
-      │                                                  │
-      │  4. Token                                        │
-      │<─────────────────────────────────────────────────│
-      │                                                  │
-      │  5. POST checkout with TokenCredential           │
-      │─────────────────────────────────────────────────>│
-      │                                                  │
-      │        (Internal Resolution: Token -> Info)      │
-      │                                                  │
-      │  6. Payment Result                               │
-      │<─────────────────────────────────────────────────│
++------------+                         +-----------------------------------+
+|  Platform  |                         |       Tokenizer / Processor       |
+| (Collector)|                         |      (Business or PSP)            |
++-----+------+                         +-----------------+-----------------+
+      |                                                  |
+      |  1. GET ucp.payment_handlers                     |
+      |------------------------------------------------->|
+      |                                                  |
+      |  2. Handler Config (URL + Identity)              |
+      |<-------------------------------------------------|
+      |                                                  |
+      |  3. POST /tokenize (Credential + Identity)       |
+      |------------------------------------------------->|
+      |                                                  |
+      |  4. Token                                        |
+      |<-------------------------------------------------|
+      |                                                  |
+      |  5. POST checkout with TokenCredential           |
+      |------------------------------------------------->|
+      |                                                  |
+      |        (Internal Resolution: Token -> Info)      |
+      |                                                  |
+      |  6. Payment Result                               |
+      |<-------------------------------------------------|
 ```
 
 ---
