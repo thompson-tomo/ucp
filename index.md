@@ -106,7 +106,8 @@ Support complex cart logic, dynamic pricing, tax calculations, and more across m
         "destinations": [
           {
             "id": "dest_1",
-            "full_name": "Elisa Beckett",
+            "first_name": "Elisa",
+            "last_name": "Beckett",
             "street_address": "1600 Amphitheatre Pkwy",
             "address_locality": "Mountain View",
             "address_region": "CA",
@@ -189,7 +190,8 @@ From purchase confirmation to delivery. Real-time webhooks power status updates,
         "line_items": [{ "id": "li_1", "quantity": 1 }],
         "method_type": "shipping",
         "destination": {
-          "full_name": "Elisa Beckett",
+          "first_name": "Elisa",
+          "last_name": "Beckett",
           "street_address": "1600 Amphitheatre Pkwy",
           "address_locality": "Mountain View",
           "address_region": "CA",
@@ -270,21 +272,31 @@ Universal payments that are provable—every authorization backed by cryptograph
 
 Adyen
 
+Affirm
+
 Amex
 
 Ant International
 
 Best Buy
 
+Block
+
 Carrefour
+
+Chewy
 
 Chewy
 
 Commerce
 
+Fiserv
+
 Flipkart
 
 Gap
+
+Klarna
 
 Kroger
 
@@ -301,6 +313,8 @@ Salesforce
 Sephora
 
 Shopee
+
+Splitit
 
 Stripe
 
@@ -316,21 +330,31 @@ Zalando
 
 Adyen
 
+Affirm
+
 Amex
 
 Ant International
 
 Best Buy
 
+Block
+
 Carrefour
+
+Chewy
 
 Chewy
 
 Commerce
 
+Fiserv
+
 Flipkart
 
 Gap
+
+Klarna
 
 Kroger
 
@@ -347,6 +371,8 @@ Salesforce
 Sephora
 
 Shopee
+
+Splitit
 
 Stripe
 
