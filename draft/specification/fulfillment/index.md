@@ -1,7 +1,5 @@
 # Fulfillment Extension
 
-**Version:** `2026-01-11`
-
 ## Overview
 
 The fulfillment extension enables businesses to advertise support for physical goods fulfillment (shipping, pickup, etc).
@@ -35,33 +33,33 @@ Fulfillment applies only to items requiring physical delivery. Items not requiri
 
 ### Properties
 
-| Name        | Type                                                         | Required | Description          |
-| ----------- | ------------------------------------------------------------ | -------- | -------------------- |
-| fulfillment | [Fulfillment](/draft/specification/fulfillment/#fulfillment) | No       | Fulfillment details. |
+| Name        | Type                                                               | Required | Description          |
+| ----------- | ------------------------------------------------------------------ | -------- | -------------------- |
+| fulfillment | [Fulfillment](https://ucp.dev/draft/specification/fulfillment/%7B) | No       | Fulfillment details. |
 
 ### Entities
 
 #### Fulfillment
 
-| Name              | Type                                                                                                                      | Required | Description                         |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------- |
-| methods           | Array\[[Fulfillment Method Response](/draft/specification/fulfillment/#fulfillment-method-response)\]                     | No       | Fulfillment methods for cart items. |
-| available_methods | Array\[[Fulfillment Available Method Response](/draft/specification/fulfillment/#fulfillment-available-method-response)\] | No       | Inventory availability hints.       |
+| Name              | Type                                                                                         | Required | Description                         |
+| ----------------- | -------------------------------------------------------------------------------------------- | -------- | ----------------------------------- |
+| methods           | Array\[[Fulfillment Method](https://ucp.dev/draft/specification/fulfillment/%7B)\]           | No       | Fulfillment methods for cart items. |
+| available_methods | Array\[[Fulfillment Available Method](https://ucp.dev/draft/specification/fulfillment/%7B)\] | No       | Inventory availability hints.       |
 
 #### Fulfillment Method Response
 
-| Name                    | Type                                                                                                            | Required | Description                                                                                                  |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
-| id                      | string                                                                                                          | **Yes**  | Unique fulfillment method identifier.                                                                        |
-| type                    | string                                                                                                          | **Yes**  | Fulfillment method type. **Enum:** `shipping`, `pickup`                                                      |
-| line_item_ids           | Array[string]                                                                                                   | **Yes**  | Line item IDs fulfilled via this method.                                                                     |
-| destinations            | Array\[[Fulfillment Destination Response](/draft/specification/fulfillment/#fulfillment-destination-response)\] | No       | Available destinations. For shipping: addresses. For pickup: retail locations.                               |
-| selected_destination_id | ['string', 'null']                                                                                              | No       | ID of the selected destination.                                                                              |
-| groups                  | Array\[[Fulfillment Group Response](/draft/specification/fulfillment/#fulfillment-group-response)\]             | No       | Fulfillment groups for selecting options. Agent sets selected_option_id on groups to choose shipping method. |
+| Name                    | Type                                                                                    | Required | Description                                                                                                  |
+| ----------------------- | --------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
+| id                      | string                                                                                  | **Yes**  | Unique fulfillment method identifier.                                                                        |
+| type                    | string                                                                                  | **Yes**  | Fulfillment method type. **Enum:** `shipping`, `pickup`                                                      |
+| line_item_ids           | Array[string]                                                                           | **Yes**  | Line item IDs fulfilled via this method.                                                                     |
+| destinations            | Array\[[Fulfillment Destination](https://ucp.dev/draft/specification/fulfillment/%7B)\] | No       | Available destinations. For shipping: addresses. For pickup: retail locations.                               |
+| selected_destination_id | ['string', 'null']                                                                      | No       | ID of the selected destination.                                                                              |
+| groups                  | Array\[[Fulfillment Group](https://ucp.dev/draft/specification/fulfillment/%7B)\]       | No       | Fulfillment groups for selecting options. Agent sets selected_option_id on groups to choose shipping method. |
 
 #### Fulfillment Destination Response
 
-This object MUST be one of the following types: [Shipping Destination Response](/draft/specification/fulfillment/#shipping-destination-response), [Retail Location Response](/draft/specification/fulfillment/#retail-location-response).
+This object MUST be one of the following types: [Shipping Destination](https://ucp.dev/draft/specification/fulfillment/%7B), [Retail Location](https://ucp.dev/draft/specification/fulfillment/%7B).
 
 #### Shipping Destination Response
 
@@ -75,38 +73,37 @@ This object MUST be one of the following types: [Shipping Destination Response](
 | postal_code      | string | No       | The postal code. For example, 94043.                                                                                                                                                                                                      |
 | first_name       | string | No       | Optional. First name of the contact associated with the address.                                                                                                                                                                          |
 | last_name        | string | No       | Optional. Last name of the contact associated with the address.                                                                                                                                                                           |
-| full_name        | string | No       | Optional. Full name of the contact associated with the address (if first_name or last_name fields are present they take precedence).                                                                                                      |
 | phone_number     | string | No       | Optional. Phone number of the contact associated with the address.                                                                                                                                                                        |
 | id               | string | **Yes**  | ID specific to this shipping destination.                                                                                                                                                                                                 |
 
 #### Retail Location Response
 
-| Name    | Type                                                               | Required | Description                       |
-| ------- | ------------------------------------------------------------------ | -------- | --------------------------------- |
-| id      | string                                                             | **Yes**  | Unique location identifier.       |
-| name    | string                                                             | **Yes**  | Location name (e.g., store name). |
-| address | [Postal Address](/draft/specification/fulfillment/#postal-address) | No       | Physical address of the location. |
+| Name    | Type                                                                  | Required | Description                       |
+| ------- | --------------------------------------------------------------------- | -------- | --------------------------------- |
+| id      | string                                                                | **Yes**  | Unique location identifier.       |
+| name    | string                                                                | **Yes**  | Location name (e.g., store name). |
+| address | [Postal Address](https://ucp.dev/draft/specification/fulfillment/%7B) | No       | Physical address of the location. |
 
 #### Fulfillment Group Response
 
-| Name               | Type                                                                                                  | Required | Description                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------- |
-| id                 | string                                                                                                | **Yes**  | Group identifier for referencing merchant-generated groups in updates. |
-| line_item_ids      | Array[string]                                                                                         | **Yes**  | Line item IDs included in this group/package.                          |
-| options            | Array\[[Fulfillment Option Response](/draft/specification/fulfillment/#fulfillment-option-response)\] | No       | Available fulfillment options for this group.                          |
-| selected_option_id | ['string', 'null']                                                                                    | No       | ID of the selected fulfillment option for this group.                  |
+| Name               | Type                                                                               | Required | Description                                                            |
+| ------------------ | ---------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------- |
+| id                 | string                                                                             | **Yes**  | Group identifier for referencing merchant-generated groups in updates. |
+| line_item_ids      | Array[string]                                                                      | **Yes**  | Line item IDs included in this group/package.                          |
+| options            | Array\[[Fulfillment Option](https://ucp.dev/draft/specification/fulfillment/%7B)\] | No       | Available fulfillment options for this group.                          |
+| selected_option_id | ['string', 'null']                                                                 | No       | ID of the selected fulfillment option for this group.                  |
 
 #### Fulfillment Option Response
 
-| Name                      | Type                                                                        | Required | Description                                                                |
-| ------------------------- | --------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
-| id                        | string                                                                      | **Yes**  | Unique fulfillment option identifier.                                      |
-| title                     | string                                                                      | **Yes**  | Short label (e.g., 'Express Shipping', 'Curbside Pickup').                 |
-| description               | string                                                                      | No       | Complete context for buyer decision (e.g., 'Arrives Dec 12-15 via FedEx'). |
-| carrier                   | string                                                                      | No       | Carrier name (for shipping).                                               |
-| earliest_fulfillment_time | string                                                                      | No       | Earliest fulfillment date.                                                 |
-| latest_fulfillment_time   | string                                                                      | No       | Latest fulfillment date.                                                   |
-| totals                    | Array\[[Total Response](/draft/specification/fulfillment/#total-response)\] | **Yes**  | Fulfillment option totals breakdown.                                       |
+| Name                      | Type                                                                  | Required | Description                                                                |
+| ------------------------- | --------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
+| id                        | string                                                                | **Yes**  | Unique fulfillment option identifier.                                      |
+| title                     | string                                                                | **Yes**  | Short label (e.g., 'Express Shipping', 'Curbside Pickup').                 |
+| description               | string                                                                | No       | Complete context for buyer decision (e.g., 'Arrives Dec 12-15 via FedEx'). |
+| carrier                   | string                                                                | No       | Carrier name (for shipping).                                               |
+| earliest_fulfillment_time | string                                                                | No       | Earliest fulfillment date.                                                 |
+| latest_fulfillment_time   | string                                                                | No       | Latest fulfillment date.                                                   |
+| totals                    | Array\[[Total](https://ucp.dev/draft/specification/fulfillment/%7B)\] | **Yes**  | Fulfillment option totals breakdown.                                       |
 
 #### Fulfillment Available Method Response
 
@@ -137,7 +134,6 @@ This object MUST be one of the following types: [Shipping Destination Response](
 | postal_code      | string | No       | The postal code. For example, 94043.                                                                                                                                                                                                      |
 | first_name       | string | No       | Optional. First name of the contact associated with the address.                                                                                                                                                                          |
 | last_name        | string | No       | Optional. Last name of the contact associated with the address.                                                                                                                                                                           |
-| full_name        | string | No       | Optional. Full name of the contact associated with the address (if first_name or last_name fields are present they take precedence).                                                                                                      |
 | phone_number     | string | No       | Optional. Phone number of the contact associated with the address.                                                                                                                                                                        |
 
 ### Example
@@ -300,7 +296,7 @@ Businesses and platforms declare fulfillment constraints in their profiles. Busi
 
 ### Platform Profile
 
-Platforms declare their rendering capabilities using `platform_config`:
+Platforms declare their rendering capabilities using `platform_schema`:
 
 | Name                 | Type    | Required | Description                         |
 | -------------------- | ------- | -------- | ----------------------------------- |
@@ -310,10 +306,10 @@ Platforms that omit config or set `supports_multi_group: false` receive single-g
 
 ```json
 // Default: single group per method
-{ "name": "dev.ucp.shopping.fulfillment", "version": "2026-01-11" }
+{ "dev.ucp.shopping.fulfillment": [{"version": "2026-01-11"}] }
 
 // Opt-in: business MAY return multiple groups per method
-{ "name": "dev.ucp.shopping.fulfillment", "version": "2026-01-11", "config": { "supports_multi_group": true } }
+{ "dev.ucp.shopping.fulfillment": [{"version": "2026-01-11", "config": { "supports_multi_group": true }}] }
 ```
 
 ### Business Profile
@@ -327,16 +323,19 @@ Businesses declare what fulfillment configurations they support using `merchant_
 
 ```json
 {
-  "capabilities": [{
-    "name": "dev.ucp.shopping.fulfillment",
-    "version": "2026-01-11",
-    "config": {
-      "allows_multi_destination": {
-        "shipping": true
-      },
-      "allows_method_combinations": [["shipping", "pickup"]]
-    }
-  }]
+  "capabilities": {
+    "dev.ucp.shopping.fulfillment": [
+      {
+        "version": "2026-01-11",
+        "config": {
+          "allows_multi_destination": {
+            "shipping": true
+          },
+          "allows_method_combinations": [["shipping", "pickup"]]
+        }
+      }
+    ]
+  }
 }
 ```
 

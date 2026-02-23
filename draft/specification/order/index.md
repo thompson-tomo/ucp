@@ -1,7 +1,6 @@
 # Order Capability
 
 - **Capability Name:** `dev.ucp.shopping.order`
-- **Version:** `2026-01-11`
 
 ## Overview
 
@@ -76,29 +75,29 @@ Expectations can be split, merged, or adjusted post-order. For example:
 
 ### Order
 
-| Name          | Type                                                                    | Required | Description                                                                                                                                  |
-| ------------- | ----------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp           | [UCP Response Order](/draft/specification/order/#ucp-response-order)    | **Yes**  |                                                                                                                                              |
-| id            | string                                                                  | **Yes**  | Unique order identifier.                                                                                                                     |
-| checkout_id   | string                                                                  | **Yes**  | Associated checkout ID for reconciliation.                                                                                                   |
-| permalink_url | string                                                                  | **Yes**  | Permalink to access the order on merchant site.                                                                                              |
-| line_items    | Array\[[Order Line Item](/draft/specification/order/#order-line-item)\] | **Yes**  | Immutable line items — source of truth for what was ordered.                                                                                 |
-| fulfillment   | object                                                                  | **Yes**  | Fulfillment data: buyer expectations and what actually happened.                                                                             |
-| adjustments   | Array\[[Adjustment](/draft/specification/order/#adjustment)\]           | No       | Append-only event log of money movements (refunds, returns, credits, disputes, cancellations, etc.) that exist independently of fulfillment. |
-| totals        | Array\[[Total Response](/draft/specification/order/#total-response)\]   | **Yes**  | Different totals for the order.                                                                                                              |
+| Name          | Type                                                                       | Required | Description                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp           | [UCP Response Order Schema](https://ucp.dev/draft/specification/order/%7B) | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                      |
+| id            | string                                                                     | **Yes**  | Unique order identifier.                                                                                                                     |
+| checkout_id   | string                                                                     | **Yes**  | Associated checkout ID for reconciliation.                                                                                                   |
+| permalink_url | string                                                                     | **Yes**  | Permalink to access the order on merchant site.                                                                                              |
+| line_items    | Array\[[Order Line Item](https://ucp.dev/draft/specification/order/%7B)\]  | **Yes**  | Immutable line items — source of truth for what was ordered.                                                                                 |
+| fulfillment   | object                                                                     | **Yes**  | Fulfillment data: buyer expectations and what actually happened.                                                                             |
+| adjustments   | Array\[[Adjustment](https://ucp.dev/draft/specification/order/%7B)\]       | No       | Append-only event log of money movements (refunds, returns, credits, disputes, cancellations, etc.) that exist independently of fulfillment. |
+| totals        | Array\[[Total Response](https://ucp.dev/draft/specification/order/%7B)\]   | **Yes**  | Different totals for the order.                                                                                                              |
 
 ### Order Line Item
 
 Line items reflect what was purchased at checkout and their current state. Status and quantity counts should reflect the event logs.
 
-| Name      | Type                                                                  | Required | Description                                                                                                                                                                |
-| --------- | --------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id        | string                                                                | **Yes**  | Line item identifier.                                                                                                                                                      |
-| item      | [Item Response](/draft/specification/order/#item-response)            | **Yes**  | Product data (id, title, price, image_url).                                                                                                                                |
-| quantity  | object                                                                | **Yes**  | Quantity tracking. Both total and fulfilled are derived from events.                                                                                                       |
-| totals    | Array\[[Total Response](/draft/specification/order/#total-response)\] | **Yes**  | Line item totals breakdown.                                                                                                                                                |
-| status    | string                                                                | **Yes**  | Derived status: fulfilled if quantity.fulfilled == quantity.total, partial if quantity.fulfilled > 0, otherwise processing. **Enum:** `processing`, `partial`, `fulfilled` |
-| parent_id | string                                                                | No       | Parent line item identifier for any nested structures.                                                                                                                     |
+| Name      | Type                                                            | Required | Description                                                                                                                                                                |
+| --------- | --------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id        | string                                                          | **Yes**  | Line item identifier.                                                                                                                                                      |
+| item      | [Item](https://ucp.dev/draft/specification/order/%7B)           | **Yes**  | Product data (id, title, price, image_url).                                                                                                                                |
+| quantity  | object                                                          | **Yes**  | Quantity tracking. Both total and fulfilled are derived from events.                                                                                                       |
+| totals    | Array\[[Total](https://ucp.dev/draft/specification/order/%7B)\] | **Yes**  | Line item totals breakdown.                                                                                                                                                |
+| status    | string                                                          | **Yes**  | Derived status: fulfilled if quantity.fulfilled == quantity.total, partial if quantity.fulfilled > 0, otherwise processing. **Enum:** `processing`, `partial`, `fulfilled` |
+| parent_id | string                                                          | No       | Parent line item identifier for any nested structures.                                                                                                                     |
 
 **Quantity Structure:**
 
@@ -121,14 +120,14 @@ else → "processing"
 
 Expectations are buyer-facing groupings representing when/how items will be delivered. They represent the current promise to the buyer and can be split, merged, or adjusted post-order.
 
-| Name           | Type                                                         | Required | Description                                                                                                 |
-| -------------- | ------------------------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------- |
-| id             | string                                                       | **Yes**  | Expectation identifier.                                                                                     |
-| line_items     | Array[object]                                                | **Yes**  | Which line items and quantities are in this expectation.                                                    |
-| method_type    | string                                                       | **Yes**  | Delivery method type (shipping, pickup, digital). **Enum:** `shipping`, `pickup`, `digital`                 |
-| destination    | [Postal Address](/draft/specification/order/#postal-address) | **Yes**  | Delivery destination address.                                                                               |
-| description    | string                                                       | No       | Human-readable delivery description (e.g., 'Arrives in 5-8 business days').                                 |
-| fulfillable_on | string                                                       | No       | When this expectation can be fulfilled: 'now' or ISO 8601 timestamp for future date (backorder, pre-order). |
+| Name           | Type                                                            | Required | Description                                                                                                 |
+| -------------- | --------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| id             | string                                                          | **Yes**  | Expectation identifier.                                                                                     |
+| line_items     | Array[object]                                                   | **Yes**  | Which line items and quantities are in this expectation.                                                    |
+| method_type    | string                                                          | **Yes**  | Delivery method type (shipping, pickup, digital). **Enum:** `shipping`, `pickup`, `digital`                 |
+| destination    | [Postal Address](https://ucp.dev/draft/specification/order/%7B) | **Yes**  | Delivery destination address.                                                                               |
+| description    | string                                                          | No       | Human-readable delivery description (e.g., 'Arrives in 5-8 business days').                                 |
+| fulfillable_on | string                                                          | No       | When this expectation can be fulfilled: 'now' or ISO 8601 timestamp for future date (backorder, pre-order). |
 
 ### Fulfillment Event
 
@@ -169,9 +168,9 @@ Examples: `refund`, `return`, `credit`, `price_adjustment`, `dispute`, `cancella
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {"name": "dev.ucp.shopping.order", "version": "2026-01-11"}
-    ]
+    "capabilities": {
+      "dev.ucp.shopping.order": [{"version": "2026-01-11"}]
+    }
   },
   "id": "order_abc123",
   "checkout_id": "checkout_xyz789",
@@ -254,7 +253,7 @@ Examples: `refund`, `return`, `credit`, `price_adjustment`, `dispute`, `cancella
   ],
   "totals": [
     { "type": "subtotal", "amount": 13000 },
-    { "type": "shipping", "amount": 1200 },
+    { "type": "fulfillment", "amount": 1200 },
     { "type": "tax", "amount": 1142 },
     { "type": "total", "amount": 15342 }
   ]
@@ -275,24 +274,24 @@ Businesses POST order events to a webhook URL provided by the platform during pa
 
 **Inputs**
 
-| Name          | Type                                                                    | Required | Description                                                                                                                                  |
-| ------------- | ----------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp           | [UCP Response Order](/draft/specification/order/#ucp-response-order)    | **Yes**  |                                                                                                                                              |
-| id            | string                                                                  | **Yes**  | Unique order identifier.                                                                                                                     |
-| checkout_id   | string                                                                  | **Yes**  | Associated checkout ID for reconciliation.                                                                                                   |
-| permalink_url | string                                                                  | **Yes**  | Permalink to access the order on merchant site.                                                                                              |
-| line_items    | Array\[[Order Line Item](/draft/specification/order/#order-line-item)\] | **Yes**  | Immutable line items — source of truth for what was ordered.                                                                                 |
-| fulfillment   | object                                                                  | **Yes**  | Fulfillment data: buyer expectations and what actually happened.                                                                             |
-| adjustments   | Array\[[Adjustment](/draft/specification/order/#adjustment)\]           | No       | Append-only event log of money movements (refunds, returns, credits, disputes, cancellations, etc.) that exist independently of fulfillment. |
-| totals        | Array\[[Total Response](/draft/specification/order/#total-response)\]   | **Yes**  | Different totals for the order.                                                                                                              |
-| event_id      | string                                                                  | **Yes**  | Unique event identifier.                                                                                                                     |
-| created_time  | string                                                                  | **Yes**  | Event creation timestamp in RFC 3339 format.                                                                                                 |
+| Name          | Type                                                                       | Required | Description                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp           | [UCP Response Order Schema](https://ucp.dev/draft/specification/order/%7B) | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                      |
+| id            | string                                                                     | **Yes**  | Unique order identifier.                                                                                                                     |
+| checkout_id   | string                                                                     | **Yes**  | Associated checkout ID for reconciliation.                                                                                                   |
+| permalink_url | string                                                                     | **Yes**  | Permalink to access the order on merchant site.                                                                                              |
+| line_items    | Array\[[Order Line Item](https://ucp.dev/draft/specification/order/%7B)\]  | **Yes**  | Immutable line items — source of truth for what was ordered.                                                                                 |
+| fulfillment   | object                                                                     | **Yes**  | Fulfillment data: buyer expectations and what actually happened.                                                                             |
+| adjustments   | Array\[[Adjustment](https://ucp.dev/draft/specification/order/%7B)\]       | No       | Append-only event log of money movements (refunds, returns, credits, disputes, cancellations, etc.) that exist independently of fulfillment. |
+| totals        | Array\[[Total](https://ucp.dev/draft/specification/order/%7B)\]            | **Yes**  | Different totals for the order.                                                                                                              |
+| event_id      | string                                                                     | **Yes**  | Unique event identifier.                                                                                                                     |
+| created_time  | string                                                                     | **Yes**  | Event creation timestamp in RFC 3339 format.                                                                                                 |
 
 **Output**
 
-| Name | Type                                   | Required | Description |
-| ---- | -------------------------------------- | -------- | ----------- |
-| ucp  | [Ucp](/draft/specification/order/#ucp) | **Yes**  |             |
+| Name | Type                                                 | Required | Description |
+| ---- | ---------------------------------------------------- | -------- | ----------- |
+| ucp  | [Ucp](https://ucp.dev/draft/specification/order/%7B) | **Yes**  |             |
 
 ### Webhook URL Configuration
 
@@ -306,40 +305,78 @@ The platform provides its webhook URL in the order capability's `config` field d
 
 ```json
 {
-  "name": "dev.ucp.shopping.order",
-  "version": "2026-01-11",
-  "config": {
-    "webhook_url": "https://platform.example.com/webhooks/ucp/orders"
-  }
+  "dev.ucp.shopping.order": [
+    {
+      "version": "2026-01-11",
+      "config": {
+        "webhook_url": "https://platform.example.com/webhooks/ucp/orders"
+      }
+    }
+  ]
 }
 ```
 
 ### Webhook Signature Verification
 
-Webhook payloads **MUST** be signed by the business and verified by the platform to ensure authenticity and integrity.
+Webhook payloads **MUST** be signed by the business and verified by the platform to ensure authenticity and integrity. Signatures follow the [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) specification using the REST binding (RFC 9421).
 
-**Signing (Business)**
+**Required Headers:**
 
-1. Select a key from the `signing_keys` array in UCP profile.
-1. Create a detached JWT (RFC 7797) over the request body using the selected key.
-1. Include the JWT in the `Request-Signature` header.
-1. Include the key ID in the JWT header's `kid` claim to allow the receiver to identify which key to use for verification.
+| Header            | Description                                |
+| ----------------- | ------------------------------------------ |
+| `UCP-Agent`       | Business profile URL (RFC 8941 Dictionary) |
+| `Signature-Input` | Describes signed components                |
+| `Signature`       | Contains the signature value               |
+| `Content-Digest`  | Body digest (RFC 9530)                     |
 
-**Verification (Platform)**
+**Example Webhook Request:**
 
-1. Extract the `Request-Signature` header from the incoming webhook request.
-1. Parse the JWT header to retrieve the `kid` (key ID).
-1. Fetch the business's UCP profile from `/.well-known/ucp` (cache as appropriate).
-1. Locate the key in `signing_keys` with the matching `kid`.
-1. Verify the JWT signature against the request body using the public key.
-1. If verification fails, reject the webhook with an appropriate error response.
+```http
+POST /webhooks/ucp/orders HTTP/1.1
+Host: platform.example.com
+Content-Type: application/json
+UCP-Agent: profile="https://merchant.example/.well-known/ucp"
+Content-Digest: sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:
+Signature-Input: sig1=("@method" "@authority" "@path" "content-digest" "content-type");keyid="merchant-2026"
+Signature: sig1=:MEUCIQDTxNq8h7LGHpvVZQp1iHkFp9+3N8Mxk2zH1wK4YuVN8w...:
 
-**Key Rotation**
+{"id":"order_abc123","event_id":"evt_123","created_time":"2026-01-15T12:00:00Z",...}
+```
 
-The `signing_keys` array supports multiple keys to enable zero-downtime rotation:
+#### Signing (Business)
 
-- **Adding a new key:** Add the new key to `signing_keys`, then start signing with it. Verifiers will find it by `kid`.
-- **Removing an old key:** After sufficient time for all in-flight webhooks to be delivered, remove the old key from `signing_keys`.
+1. Compute SHA-256 digest of the raw request body and set `Content-Digest` header
+1. Build signature base per [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421)
+1. Sign using a key from `signing_keys` in the business's UCP profile
+1. Set `Signature-Input` and `Signature` headers
+
+See [Message Signatures - REST Request Signing](https://ucp.dev/draft/specification/signatures/#rest-request-signing) for complete algorithm.
+
+#### Verification (Platform)
+
+**Authentication** (signature verification):
+
+1. Parse `Signature-Input` to extract `keyid` and signed components
+1. Fetch business's UCP profile from `/.well-known/ucp` (cache as appropriate)
+1. Locate key in `signing_keys` with matching `kid`
+1. Verify `Content-Digest` matches SHA-256 of raw body
+1. Reconstruct signature base and verify signature
+
+See [Message Signatures - REST Request Verification](https://ucp.dev/draft/specification/signatures/#rest-request-verification) for complete algorithm.
+
+**Authorization** (order ownership):
+
+After verifying the signature, the platform **MUST** confirm the signer is authorized to send events for the referenced order:
+
+1. Extract the order ID from the webhook payload
+1. Verify the order was created with this business (profile URL matches)
+1. Reject webhooks where the signer's profile doesn't match the order's business
+
+This prevents a malicious business from sending fake events for another business's orders, even with a valid signature.
+
+#### Key Rotation
+
+See [Message Signatures - Key Rotation](https://ucp.dev/draft/specification/signatures/#key-rotation) for zero-downtime key rotation procedures.
 
 ## Guidelines
 
@@ -350,22 +387,22 @@ The `signing_keys` array supports multiple keys to enable zero-downtime rotation
 
 **Business:**
 
-- **MUST** sign all webhook payloads using a key from their `signing_keys` array (published in `/.well-known/ucp`). The signature **MUST** be included in the `Request-Signature` header as a detached JWT (RFC 7797).
+- **MUST** include `UCP-Agent` header with profile URL for signer identification
+- **MUST** sign all webhook payloads per the [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) specification using RFC 9421 headers (`Signature`, `Signature-Input`, `Content-Digest`).
 - **MUST** send "Order created" event with fully populated order entity
 - **MUST** send full order entity on updates (not incremental deltas)
 - **MUST** retry failed webhook deliveries
-- **MUST** include business identifier in webhook path or headers
 
 ## Entities
 
 ### Item Response
 
-| Name      | Type    | Required | Description                                                                                                                                    |
-| --------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| id        | string  | **Yes**  | Should be recognized by both the Platform, and the Business. For Google it should match the id provided in the "id" field in the product feed. |
-| title     | string  | **Yes**  | Product title.                                                                                                                                 |
-| price     | integer | **Yes**  | Unit price in minor (cents) currency units.                                                                                                    |
-| image_url | string  | No       | Product image URI.                                                                                                                             |
+| Name      | Type    | Required | Description                                                                                                                                                                 |
+| --------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id        | string  | **Yes**  | The product identifier, often the SKU, required to resolve the product details associated with this line item. Should be recognized by both the Platform, and the Business. |
+| title     | string  | **Yes**  | Product title.                                                                                                                                                              |
+| price     | integer | **Yes**  | Unit price in minor (cents) currency units.                                                                                                                                 |
+| image_url | string  | No       | Product image URI.                                                                                                                                                          |
 
 ### Postal Address
 
@@ -379,19 +416,18 @@ The `signing_keys` array supports multiple keys to enable zero-downtime rotation
 | postal_code      | string | No       | The postal code. For example, 94043.                                                                                                                                                                                                      |
 | first_name       | string | No       | Optional. First name of the contact associated with the address.                                                                                                                                                                          |
 | last_name        | string | No       | Optional. Last name of the contact associated with the address.                                                                                                                                                                           |
-| full_name        | string | No       | Optional. Full name of the contact associated with the address (if first_name or last_name fields are present they take precedence).                                                                                                      |
 | phone_number     | string | No       | Optional. Phone number of the contact associated with the address.                                                                                                                                                                        |
 
 ### Response
 
-| Name    | Type   | Required | Description                                                                                                                |
-| ------- | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------- |
-| name    | string | **Yes**  | Stable capability identifier in reverse-domain notation (e.g., dev.ucp.shopping.checkout). Used in capability negotiation. |
-| version | string | **Yes**  | Capability version in YYYY-MM-DD format.                                                                                   |
-| spec    | string | No       | URL to human-readable specification document.                                                                              |
-| schema  | string | No       | URL to JSON Schema for this capability's payload.                                                                          |
-| extends | string | No       | Parent capability this extends. Present for extensions, absent for root capabilities.                                      |
-| config  | object | No       | Capability-specific configuration (structure defined by each capability).                                                  |
+| Name    | Type    | Required | Description                                                                                                                     |
+| ------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| version | string  | **Yes**  | Entity version in YYYY-MM-DD format.                                                                                            |
+| spec    | string  | No       | URL to human-readable specification document.                                                                                   |
+| schema  | string  | No       | URL to JSON Schema defining this entity's structure and payloads.                                                               |
+| id      | string  | No       | Unique identifier for this entity instance. Used to disambiguate when multiple instances exist.                                 |
+| config  | object  | No       | Entity-specific configuration. Structure defined by each entity's schema.                                                       |
+| extends | OneOf[] | No       | Parent capability(s) this extends. Present for extensions, absent for root capabilities. Use array for multi-parent extensions. |
 
 ### Total Response
 
@@ -403,7 +439,10 @@ The `signing_keys` array supports multiple keys to enable zero-downtime rotation
 
 ### UCP Response Order
 
-| Name         | Type                                                      | Required | Description                                |
-| ------------ | --------------------------------------------------------- | -------- | ------------------------------------------ |
-| version      | string                                                    | **Yes**  | UCP protocol version in YYYY-MM-DD format. |
-| capabilities | Array\[[Response](/draft/specification/order/#response)\] | **Yes**  | Active capabilities for this response.     |
+| Name             | Type   | Required | Description                                            |
+| ---------------- | ------ | -------- | ------------------------------------------------------ |
+| version          | string | **Yes**  | UCP version in YYYY-MM-DD format.                      |
+| services         | object | No       | Service registry keyed by reverse-domain name.         |
+| capabilities     | object | No       | Capability registry keyed by reverse-domain name.      |
+| payment_handlers | object | No       | Payment handler registry keyed by reverse-domain name. |
+| capabilities     | any    | No       |                                                        |

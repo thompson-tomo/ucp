@@ -1,66 +1,65 @@
 # Checkout Capability
 
 - **Capability Name:** `dev.ucp.shopping.checkout`
-- **Version:** `2026-01-11`
 
 ## Overview
 
 Allows platforms to facilitate checkout sessions. The checkout has to be finalized manually by the user through a trusted UI unless the AP2 Mandates extension is supported.
 
-The business remains the Merchant of Record (MoR), and they don't need to become PCI DSS compliant to support this Capability.
+The business remains the Merchant of Record (MoR), and they don't need to become PCI DSS compliant to accept card payments through this Capability.
 
-**Flow overview**
+### Flow overview
 
-**Payments**
+### Payments
 
-On checkout creation, businesses are required to define a payment configuration. The Checkout object includes `payment.handlers` which define the processing specifications for collecting payment instruments (e.g., Google Pay, direct tokenization). When the buyer submits payment, the platform populates the `payment.instruments` array with the collected instrument data.
+Payment handlers are discovered from the business's UCP profile at `/.well-known/ucp` and checkout.ucp.payment_handlers. The handlers define the processing specifications for collecting payment instruments (e.g., Google Pay, Shop Pay). When the buyer submits payment, the platform populates the `payment.instruments` array with the collected instrument data.
 
-**Fulfillment**
+The `payment` object is optional on checkout creation and may be omitted for use cases that don't require payment processing (e.g., quote generation, cart management).
+
+### Fulfillment
 
 Fulfillment is modelled as an extension in UCP to account for diverse use cases.
 
 Fulfillment is optional in the checkout object. This is done to enable a platform to perform checkout for digital goods without needing to furnish fulfillment details more relevant for physical goods.
 
-**Checkout Status Lifecycle**
+### Checkout Status Lifecycle
 
 The checkout `status` field indicates the current phase of the session and determines what action is required next. The business sets the status; the platform receives messages indicating what's needed to progress.
 
 ```text
-┌────────────┐    ┌─────────────────────┐
-│ incomplete │◀──▶│ requires_escalation │
-└─────┬──────┘    │                     │
-      │           │  (buyer handoff     │
-      │           │   via continue_url) │
-      │           └──────────┬──────────┘
-      │                      │
-      │ all info collected   │ continue_url
-      ▼                      │
-┌──────────────────┐         │
-│ready_for_complete│         │
-│                  │         │
-│ (platform can    │         │
-│ call Complete    │         │
-│   Checkout).     │         │
-└────────┬─────────┘         │
-         │                   │
-         │ Complete Checkout │
-         ▼                   │
-┌────────────────────┐       │
-│complete_in_progress│       │
-└─────────┬──────────┘       │
-          │                  │
-          └────────┬─────────┘
-                   ▼
-            ┌─────────────┐
-            │  completed  │
-            └─────────────┘
+       +------------+                         +---------------------+
+       | incomplete |<----------------------->| requires_escalation |
+       +-----+------+                         |   (buyer handoff    |
+             |                                |  via continue_url)  |
+             | all info collected             +----------+----------+
+             v                                           |
+    +------------------+                                 |
+    |ready_for_complete|                                 |
+    |                  |                                 |
+    | (platform can    |                                 | continue_url
+    | call Complete    |                                 |
+    |   Checkout)      |                                 |
+    +--------+---------+                                 |
+             |                                           |
+             | Complete Checkout                         |
+             v                                           |
+   +--------------------+                                |
+   |complete_in_progress|                                |
+   +---------+----------+                                |
+             |                                           |
+             +-----------------------+-------------------+
+                                     v
+                               +-------------+
+                               |  completed  |
+                               +-------------+
 
-            ┌─────────────┐
-            │  canceled   │  (session invalid/expired - can occur from any state)
-            └─────────────┘
+                               +-------------+
+                               |  canceled   |
+                               +-------------+
+          (session invalid/expired - can occur from any state)
 ```
 
-**Status Values**
+### Status Values
 
 - **`incomplete`**: Checkout session is missing required information or has issues that need resolution. Platform should inspect `messages` array for context and should attempt to resolve via Update Checkout.
 - **`requires_escalation`**: Checkout session requires information that cannot be provided via API, or buyer input is required. Platform should inspect `messages` to understand what's needed (see Error Handling below). If any `recoverable` errors exist, resolve those first. Then hand off to buyer via `continue_url`.
@@ -137,6 +136,21 @@ ELSE IF requires_buyer_review is not empty
   handoff_context = "ready for final review by the buyer"
 ```
 
+#### Standard Errors
+
+Standard errors are standardized error codes that platforms are expected to handle with specific, appropriate UX rather than generic error treatment.
+
+| Code                    | Description                              |
+| ----------------------- | ---------------------------------------- |
+| `out_of_stock`          | Specific item or variant is unavailable  |
+| `item_unavailable`      | Item cannot be purchased (e.g. delisted) |
+| `address_undeliverable` | Cannot deliver to the provided address   |
+| `payment_failed`        | Payment processing failed                |
+
+Businesses **SHOULD** mark standard errors with `severity: recoverable` to signal that platforms should provide appropriate UX (out-of-stock messaging, address validation prompts, payment method changes) rather than generic error messages or deferring to checkout completion.
+
+Example: `out_of_stock` requires specific upfront UX, whereas `payment_required` can be handled generically at submission.
+
 ## Continue URL
 
 The `continue_url` field enables checkout handoff from platform to business UI, allowing the buyer to continue and finalize the checkout session.
@@ -171,7 +185,7 @@ A stateless URL that encodes checkout state directly, allowing reconstruction wi
 
 (In addition to the overarching guidelines)
 
-**Platform**
+### Platform
 
 - **MAY** engage an agent to facilitate the checkout session (e.g. add items to the checkout session, select fulfillment address). However, the agent must hand over the checkout session to a trusted and deterministic UI for the user to review the checkout details and place the order.
 - **MAY** send the user from the trusted, deterministic UI back to the agent at any time. For example, when the user decides to exit the checkout screen to keep adding items to the cart.
@@ -180,7 +194,7 @@ A stateless URL that encodes checkout state directly, allowing reconstruction wi
 - **MAY** use `continue_url` to hand off to business UI in other situations.
 - When performing handoff, **SHOULD** prefer business-provided `continue_url` over platform-constructed checkout permalinks.
 
-**Business**
+### Business
 
 - **MUST** send a confirmation email after the checkout has been completed.
 - **SHOULD** provide accurate error messages.
@@ -194,19 +208,19 @@ A stateless URL that encodes checkout state directly, allowing reconstruction wi
 
 | Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                     |
 | ------------ | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Checkout](/draft/specification/checkout/#ucp-response-checkout)    | **Yes**  |                                                                                                                                                                                                                                                                 |
+| ucp          | [UCP Response Checkout Schema](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                                                                                                                                         |
 | id           | string                                                                           | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
-| line_items   | Array\[[Line Item Response](/draft/specification/checkout/#line-item-response)\] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
-| buyer        | [Buyer](/draft/specification/checkout/#buyer)                                    | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
+| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/checkout/%7B)\]  | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
+| buyer        | [Buyer](https://ucp.dev/draft/specification/checkout/%7B)                        | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
 | status       | string                                                                           | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
-| currency     | string                                                                           | **Yes**  | ISO 4217 currency code.                                                                                                                                                                                                                                         |
-| totals       | Array\[[Total Response](/draft/specification/checkout/#total-response)\]         | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
-| messages     | Array\[[Message](/draft/specification/checkout/#message)\]                       | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
-| links        | Array\[[Link](/draft/specification/checkout/#link)\]                             | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                          |
+| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/checkout/%7B)\]      | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
+| messages     | Array\[[Message](https://ucp.dev/draft/specification/checkout/%7B)\]             | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
+| links        | Array\[[Link](https://ucp.dev/draft/specification/checkout/%7B)\]                | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
 | expires_at   | string                                                                           | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
 | continue_url | string                                                                           | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
-| payment      | [Payment Response](/draft/specification/checkout/#payment-response)              | **Yes**  |                                                                                                                                                                                                                                                                 |
-| order        | [Order Confirmation](/draft/specification/checkout/#order-confirmation)          | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
+| payment      | [Payment](https://ucp.dev/draft/specification/checkout/%7B)                      | No       | Payment configuration containing handlers.                                                                                                                                                                                                                      |
+| order        | [Order Confirmation](https://ucp.dev/draft/specification/checkout/%7B)           | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
 
 ## Operations
 
@@ -228,30 +242,30 @@ To be invoked by the platform when the user has expressed purchase intent (e.g.,
 
 **Inputs**
 
-| Name       | Type                                                                                         | Required | Description                           |
-| ---------- | -------------------------------------------------------------------------------------------- | -------- | ------------------------------------- |
-| line_items | Array\[[Line Item Create Request](/draft/specification/checkout/#line-item-create-request)\] | **Yes**  | List of line items being checked out. |
-| buyer      | [Buyer](/draft/specification/checkout/#buyer)                                                | No       | Representation of the buyer.          |
-| currency   | string                                                                                       | **Yes**  | ISO 4217 currency code.               |
-| payment    | [Payment Create Request](/draft/specification/checkout/#payment-create-request)              | **Yes**  |                                       |
+| Name       | Type                                                                   | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------- | ---------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| line_items | Array\[[Line Item](https://ucp.dev/draft/specification/checkout/%7B)\] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| buyer      | [Buyer](https://ucp.dev/draft/specification/checkout/%7B)              | No       | Representation of the buyer.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| context    | [Context](https://ucp.dev/draft/specification/checkout/%7B)            | No       | Provisional buyer signals for relevance and localization: product availability, pricing, currency, tax, shipping, payment methods, and eligibility (e.g., student or affiliation discounts). Businesses SHOULD use these values when authoritative data (e.g., address) is absent, and MAY ignore unsupported values without returning errors. Context SHOULD be non-identifying and can be disclosed progressively—coarse signals early, finer resolution as the session progresses. Higher-resolution data (shipping address, billing address) supersedes context. Platforms SHOULD progressively enhance context throughout the buyer journey. |
+| payment    | [Payment](https://ucp.dev/draft/specification/checkout/%7B)            | No       | Payment configuration containing handlers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 **Output**
 
 | Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                     |
 | ------------ | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Checkout](/draft/specification/checkout/#ucp-response-checkout)    | **Yes**  |                                                                                                                                                                                                                                                                 |
+| ucp          | [UCP Response Checkout Schema](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                                                                                                                                         |
 | id           | string                                                                           | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
-| line_items   | Array\[[Line Item Response](/draft/specification/checkout/#line-item-response)\] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
-| buyer        | [Buyer](/draft/specification/checkout/#buyer)                                    | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
+| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/checkout/%7B)\]  | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
+| buyer        | [Buyer](https://ucp.dev/draft/specification/checkout/%7B)                        | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
 | status       | string                                                                           | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
-| currency     | string                                                                           | **Yes**  | ISO 4217 currency code.                                                                                                                                                                                                                                         |
-| totals       | Array\[[Total Response](/draft/specification/checkout/#total-response)\]         | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
-| messages     | Array\[[Message](/draft/specification/checkout/#message)\]                       | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
-| links        | Array\[[Link](/draft/specification/checkout/#link)\]                             | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                          |
+| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/checkout/%7B)\]      | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
+| messages     | Array\[[Message](https://ucp.dev/draft/specification/checkout/%7B)\]             | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
+| links        | Array\[[Link](https://ucp.dev/draft/specification/checkout/%7B)\]                | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
 | expires_at   | string                                                                           | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
 | continue_url | string                                                                           | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
-| payment      | [Payment Response](/draft/specification/checkout/#payment-response)              | **Yes**  |                                                                                                                                                                                                                                                                 |
-| order        | [Order Confirmation](/draft/specification/checkout/#order-confirmation)          | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
+| payment      | [Payment](https://ucp.dev/draft/specification/checkout/%7B)                      | No       | Payment configuration containing handlers.                                                                                                                                                                                                                      |
+| order        | [Order Confirmation](https://ucp.dev/draft/specification/checkout/%7B)           | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
 
 ### Get Checkout
 
@@ -269,19 +283,19 @@ The platform will honor the TTL provided by the business via `expires_at` at the
 
 | Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                     |
 | ------------ | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Checkout](/draft/specification/checkout/#ucp-response-checkout)    | **Yes**  |                                                                                                                                                                                                                                                                 |
+| ucp          | [UCP Response Checkout Schema](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                                                                                                                                         |
 | id           | string                                                                           | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
-| line_items   | Array\[[Line Item Response](/draft/specification/checkout/#line-item-response)\] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
-| buyer        | [Buyer](/draft/specification/checkout/#buyer)                                    | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
+| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/checkout/%7B)\]  | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
+| buyer        | [Buyer](https://ucp.dev/draft/specification/checkout/%7B)                        | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
 | status       | string                                                                           | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
-| currency     | string                                                                           | **Yes**  | ISO 4217 currency code.                                                                                                                                                                                                                                         |
-| totals       | Array\[[Total Response](/draft/specification/checkout/#total-response)\]         | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
-| messages     | Array\[[Message](/draft/specification/checkout/#message)\]                       | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
-| links        | Array\[[Link](/draft/specification/checkout/#link)\]                             | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                          |
+| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/checkout/%7B)\]      | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
+| messages     | Array\[[Message](https://ucp.dev/draft/specification/checkout/%7B)\]             | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
+| links        | Array\[[Link](https://ucp.dev/draft/specification/checkout/%7B)\]                | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
 | expires_at   | string                                                                           | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
 | continue_url | string                                                                           | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
-| payment      | [Payment Response](/draft/specification/checkout/#payment-response)              | **Yes**  |                                                                                                                                                                                                                                                                 |
-| order        | [Order Confirmation](/draft/specification/checkout/#order-confirmation)          | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
+| payment      | [Payment](https://ucp.dev/draft/specification/checkout/%7B)                      | No       | Payment configuration containing handlers.                                                                                                                                                                                                                      |
+| order        | [Order Confirmation](https://ucp.dev/draft/specification/checkout/%7B)           | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
 
 ### Update Checkout
 
@@ -289,32 +303,32 @@ Performs a full replacement of the checkout resource. The platform is **REQUIRED
 
 **Inputs**
 
-| Name       | Type                                                                                         | Required | Description                                                    |
-| ---------- | -------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------- |
-| id         | string                                                                                       | **Yes**  | The unique identifier of the checkout session.Defined in path. |
-| id         | string                                                                                       | **Yes**  | Unique identifier of the checkout session.                     |
-| line_items | Array\[[Line Item Update Request](/draft/specification/checkout/#line-item-update-request)\] | **Yes**  | List of line items being checked out.                          |
-| buyer      | [Buyer](/draft/specification/checkout/#buyer)                                                | No       | Representation of the buyer.                                   |
-| currency   | string                                                                                       | **Yes**  | ISO 4217 currency code.                                        |
-| payment    | [Payment Update Request](/draft/specification/checkout/#payment-update-request)              | **Yes**  |                                                                |
+| Name       | Type                                                                   | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------- | ---------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id         | string                                                                 | **Yes**  | The unique identifier of the checkout session.Defined in path.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| id         | string                                                                 | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| line_items | Array\[[Line Item](https://ucp.dev/draft/specification/checkout/%7B)\] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| buyer      | [Buyer](https://ucp.dev/draft/specification/checkout/%7B)              | No       | Representation of the buyer.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| context    | [Context](https://ucp.dev/draft/specification/checkout/%7B)            | No       | Provisional buyer signals for relevance and localization: product availability, pricing, currency, tax, shipping, payment methods, and eligibility (e.g., student or affiliation discounts). Businesses SHOULD use these values when authoritative data (e.g., address) is absent, and MAY ignore unsupported values without returning errors. Context SHOULD be non-identifying and can be disclosed progressively—coarse signals early, finer resolution as the session progresses. Higher-resolution data (shipping address, billing address) supersedes context. Platforms SHOULD progressively enhance context throughout the buyer journey. |
+| payment    | [Payment](https://ucp.dev/draft/specification/checkout/%7B)            | No       | Payment configuration containing handlers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 **Output**
 
 | Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                     |
 | ------------ | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Checkout](/draft/specification/checkout/#ucp-response-checkout)    | **Yes**  |                                                                                                                                                                                                                                                                 |
+| ucp          | [UCP Response Checkout Schema](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                                                                                                                                         |
 | id           | string                                                                           | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
-| line_items   | Array\[[Line Item Response](/draft/specification/checkout/#line-item-response)\] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
-| buyer        | [Buyer](/draft/specification/checkout/#buyer)                                    | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
+| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/checkout/%7B)\]  | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
+| buyer        | [Buyer](https://ucp.dev/draft/specification/checkout/%7B)                        | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
 | status       | string                                                                           | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
-| currency     | string                                                                           | **Yes**  | ISO 4217 currency code.                                                                                                                                                                                                                                         |
-| totals       | Array\[[Total Response](/draft/specification/checkout/#total-response)\]         | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
-| messages     | Array\[[Message](/draft/specification/checkout/#message)\]                       | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
-| links        | Array\[[Link](/draft/specification/checkout/#link)\]                             | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                          |
+| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/checkout/%7B)\]      | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
+| messages     | Array\[[Message](https://ucp.dev/draft/specification/checkout/%7B)\]             | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
+| links        | Array\[[Link](https://ucp.dev/draft/specification/checkout/%7B)\]                | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
 | expires_at   | string                                                                           | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
 | continue_url | string                                                                           | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
-| payment      | [Payment Response](/draft/specification/checkout/#payment-response)              | **Yes**  |                                                                                                                                                                                                                                                                 |
-| order        | [Order Confirmation](/draft/specification/checkout/#order-confirmation)          | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
+| payment      | [Payment](https://ucp.dev/draft/specification/checkout/%7B)                      | No       | Payment configuration containing handlers.                                                                                                                                                                                                                      |
+| order        | [Order Confirmation](https://ucp.dev/draft/specification/checkout/%7B)           | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
 
 ### Complete Checkout
 
@@ -324,29 +338,29 @@ After this call, other details will be updated through subsequent events as the 
 
 **Inputs**
 
-| Name         | Type                                                                    | Required | Description                                                    |
-| ------------ | ----------------------------------------------------------------------- | -------- | -------------------------------------------------------------- |
-| id           | string                                                                  | **Yes**  | The unique identifier of the checkout session.Defined in path. |
-| payment_data | [Payment Instrument](/draft/specification/checkout/#payment-instrument) | **Yes**  |                                                                |
-| risk_signals | object                                                                  | No       | Key-value pairs of risk signals.                               |
+| Name         | Type                                                        | Required | Description                                                    |
+| ------------ | ----------------------------------------------------------- | -------- | -------------------------------------------------------------- |
+| id           | string                                                      | **Yes**  | The unique identifier of the checkout session.Defined in path. |
+| payment      | [Payment](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  | Payment configuration containing handlers.                     |
+| risk_signals | object                                                      | No       | Key-value pairs of risk signals.                               |
 
 **Output**
 
 | Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                     |
 | ------------ | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Checkout](/draft/specification/checkout/#ucp-response-checkout)    | **Yes**  |                                                                                                                                                                                                                                                                 |
+| ucp          | [UCP Response Checkout Schema](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                                                                                                                                         |
 | id           | string                                                                           | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
-| line_items   | Array\[[Line Item Response](/draft/specification/checkout/#line-item-response)\] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
-| buyer        | [Buyer](/draft/specification/checkout/#buyer)                                    | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
+| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/checkout/%7B)\]  | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
+| buyer        | [Buyer](https://ucp.dev/draft/specification/checkout/%7B)                        | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
 | status       | string                                                                           | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
-| currency     | string                                                                           | **Yes**  | ISO 4217 currency code.                                                                                                                                                                                                                                         |
-| totals       | Array\[[Total Response](/draft/specification/checkout/#total-response)\]         | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
-| messages     | Array\[[Message](/draft/specification/checkout/#message)\]                       | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
-| links        | Array\[[Link](/draft/specification/checkout/#link)\]                             | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                          |
+| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/checkout/%7B)\]      | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
+| messages     | Array\[[Message](https://ucp.dev/draft/specification/checkout/%7B)\]             | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
+| links        | Array\[[Link](https://ucp.dev/draft/specification/checkout/%7B)\]                | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
 | expires_at   | string                                                                           | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
 | continue_url | string                                                                           | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
-| payment      | [Payment Response](/draft/specification/checkout/#payment-response)              | **Yes**  |                                                                                                                                                                                                                                                                 |
-| order        | [Order Confirmation](/draft/specification/checkout/#order-confirmation)          | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
+| payment      | [Payment](https://ucp.dev/draft/specification/checkout/%7B)                      | No       | Payment configuration containing handlers.                                                                                                                                                                                                                      |
+| order        | [Order Confirmation](https://ucp.dev/draft/specification/checkout/%7B)           | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
 
 ### Cancel Checkout
 
@@ -362,19 +376,19 @@ This operation will be used to cancel a checkout session, if it can be canceled.
 
 | Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                     |
 | ------------ | -------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Checkout](/draft/specification/checkout/#ucp-response-checkout)    | **Yes**  |                                                                                                                                                                                                                                                                 |
+| ucp          | [UCP Response Checkout Schema](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                                                                                                                                         |
 | id           | string                                                                           | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
-| line_items   | Array\[[Line Item Response](/draft/specification/checkout/#line-item-response)\] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
-| buyer        | [Buyer](/draft/specification/checkout/#buyer)                                    | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
+| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/checkout/%7B)\]  | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
+| buyer        | [Buyer](https://ucp.dev/draft/specification/checkout/%7B)                        | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
 | status       | string                                                                           | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
-| currency     | string                                                                           | **Yes**  | ISO 4217 currency code.                                                                                                                                                                                                                                         |
-| totals       | Array\[[Total Response](/draft/specification/checkout/#total-response)\]         | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
-| messages     | Array\[[Message](/draft/specification/checkout/#message)\]                       | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
-| links        | Array\[[Link](/draft/specification/checkout/#link)\]                             | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                          |
+| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/checkout/%7B)\]      | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
+| messages     | Array\[[Message](https://ucp.dev/draft/specification/checkout/%7B)\]             | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
+| links        | Array\[[Link](https://ucp.dev/draft/specification/checkout/%7B)\]                | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
 | expires_at   | string                                                                           | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
 | continue_url | string                                                                           | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
-| payment      | [Payment Response](/draft/specification/checkout/#payment-response)              | **Yes**  |                                                                                                                                                                                                                                                                 |
-| order        | [Order Confirmation](/draft/specification/checkout/#order-confirmation)          | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
+| payment      | [Payment](https://ucp.dev/draft/specification/checkout/%7B)                      | No       | Payment configuration containing handlers.                                                                                                                                                                                                                      |
+| order        | [Order Confirmation](https://ucp.dev/draft/specification/checkout/%7B)           | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
 
 ## Transport Bindings
 
@@ -389,76 +403,86 @@ The abstract operations above are bound to specific transport protocols as defin
 
 ### Buyer
 
-| Name         | Type   | Required | Description                                                                                       |
-| ------------ | ------ | -------- | ------------------------------------------------------------------------------------------------- |
-| first_name   | string | No       | First name of the buyer.                                                                          |
-| last_name    | string | No       | Last name of the buyer.                                                                           |
-| full_name    | string | No       | Optional, buyer's full name (if first_name or last_name fields are present they take precedence). |
-| email        | string | No       | Email of the buyer.                                                                               |
-| phone_number | string | No       | E.164 standard.                                                                                   |
+| Name         | Type   | Required | Description              |
+| ------------ | ------ | -------- | ------------------------ |
+| first_name   | string | No       | First name of the buyer. |
+| last_name    | string | No       | Last name of the buyer.  |
+| email        | string | No       | Email of the buyer.      |
+| phone_number | string | No       | E.164 standard.          |
+
+### Context
+
+Context signals are provisional hints. Businesses SHOULD use these values when authoritative data (e.g. address) is absent, and MAY ignore unsupported values without returning errors. This differs from authoritative selections which require explicit validation and error feedback.
+
+| Name            | Type   | Required | Description                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| address_country | string | No       | The country. Recommended to be in 2-letter ISO 3166-1 alpha-2 format, for example "US". For backward compatibility, a 3-letter ISO 3166-1 alpha-3 country code such as "SGP" or a full country name such as "Singapore" can also be used. Optional hint for market context (currency, availability, pricing)—higher-resolution data (e.g., shipping address) supersedes this value. |
+| address_region  | string | No       | The region in which the locality is, and which is in the country. For example, California or another appropriate first-level Administrative division. Optional hint for progressive localization—higher-resolution data (e.g., shipping address) supersedes this value.                                                                                                             |
+| postal_code     | string | No       | The postal code. For example, 94043. Optional hint for regional refinement—higher-resolution data (e.g., shipping address) supersedes this value.                                                                                                                                                                                                                                   |
+| intent          | string | No       | Background context describing buyer's intent (e.g., 'looking for a gift under $50', 'need something durable for outdoor use'). Informs relevance, recommendations, and personalization.                                                                                                                                                                                             |
 
 ### Fulfillment Option
 
-| Name                      | Type                                                                     | Required | Description                                                                |
-| ------------------------- | ------------------------------------------------------------------------ | -------- | -------------------------------------------------------------------------- |
-| id                        | string                                                                   | **Yes**  | Unique fulfillment option identifier.                                      |
-| title                     | string                                                                   | **Yes**  | Short label (e.g., 'Express Shipping', 'Curbside Pickup').                 |
-| description               | string                                                                   | No       | Complete context for buyer decision (e.g., 'Arrives Dec 12-15 via FedEx'). |
-| carrier                   | string                                                                   | No       | Carrier name (for shipping).                                               |
-| earliest_fulfillment_time | string                                                                   | No       | Earliest fulfillment date.                                                 |
-| latest_fulfillment_time   | string                                                                   | No       | Latest fulfillment date.                                                   |
-| totals                    | Array\[[Total Response](/draft/specification/checkout/#total-response)\] | **Yes**  | Fulfillment option totals breakdown.                                       |
+| Name                      | Type          | Required | Description                                                                |
+| ------------------------- | ------------- | -------- | -------------------------------------------------------------------------- |
+| id                        | string        | **Yes**  | Unique fulfillment option identifier.                                      |
+| title                     | string        | **Yes**  | Short label (e.g., 'Express Shipping', 'Curbside Pickup').                 |
+| description               | string        | No       | Complete context for buyer decision (e.g., 'Arrives Dec 12-15 via FedEx'). |
+| carrier                   | string        | No       | Carrier name (for shipping).                                               |
+| earliest_fulfillment_time | string        | No       | Earliest fulfillment date.                                                 |
+| latest_fulfillment_time   | string        | No       | Latest fulfillment date.                                                   |
+| totals                    | Array[object] | **Yes**  | Fulfillment option totals breakdown.                                       |
 
 ### Item
 
 #### Item Create Request
 
-| Name | Type   | Required | Description                                                                                                                                    |
-| ---- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| id   | string | **Yes**  | Should be recognized by both the Platform, and the Business. For Google it should match the id provided in the "id" field in the product feed. |
+| Name | Type   | Required | Description                                                                                                                                                                 |
+| ---- | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id   | string | **Yes**  | The product identifier, often the SKU, required to resolve the product details associated with this line item. Should be recognized by both the Platform, and the Business. |
 
 #### Item Update Request
 
-| Name | Type   | Required | Description                                                                                                                                    |
-| ---- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| id   | string | **Yes**  | Should be recognized by both the Platform, and the Business. For Google it should match the id provided in the "id" field in the product feed. |
+| Name | Type   | Required | Description                                                                                                                                                                 |
+| ---- | ------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id   | string | **Yes**  | The product identifier, often the SKU, required to resolve the product details associated with this line item. Should be recognized by both the Platform, and the Business. |
 
 #### Item Response
 
-| Name      | Type    | Required | Description                                                                                                                                    |
-| --------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| id        | string  | **Yes**  | Should be recognized by both the Platform, and the Business. For Google it should match the id provided in the "id" field in the product feed. |
-| title     | string  | **Yes**  | Product title.                                                                                                                                 |
-| price     | integer | **Yes**  | Unit price in minor (cents) currency units.                                                                                                    |
-| image_url | string  | No       | Product image URI.                                                                                                                             |
+| Name      | Type    | Required | Description                                                                                                                                                                 |
+| --------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id        | string  | **Yes**  | The product identifier, often the SKU, required to resolve the product details associated with this line item. Should be recognized by both the Platform, and the Business. |
+| title     | string  | **Yes**  | Product title.                                                                                                                                                              |
+| price     | integer | **Yes**  | Unit price in minor (cents) currency units.                                                                                                                                 |
+| image_url | string  | No       | Product image URI.                                                                                                                                                          |
 
 ### Line Item
 
 #### Line Item Create Request
 
-| Name     | Type                                                                      | Required | Description                           |
-| -------- | ------------------------------------------------------------------------- | -------- | ------------------------------------- |
-| item     | [Item Create Request](/draft/specification/checkout/#item-create-request) | **Yes**  |                                       |
-| quantity | integer                                                                   | **Yes**  | Quantity of the item being purchased. |
+| Name     | Type                                                     | Required | Description                           |
+| -------- | -------------------------------------------------------- | -------- | ------------------------------------- |
+| item     | [Item](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  |                                       |
+| quantity | integer                                                  | **Yes**  | Quantity of the item being purchased. |
 
 #### Line Item Update Request
 
-| Name      | Type                                                                      | Required | Description                                            |
-| --------- | ------------------------------------------------------------------------- | -------- | ------------------------------------------------------ |
-| id        | string                                                                    | No       |                                                        |
-| item      | [Item Update Request](/draft/specification/checkout/#item-update-request) | **Yes**  |                                                        |
-| quantity  | integer                                                                   | **Yes**  | Quantity of the item being purchased.                  |
-| parent_id | string                                                                    | No       | Parent line item identifier for any nested structures. |
+| Name      | Type                                                     | Required | Description                                            |
+| --------- | -------------------------------------------------------- | -------- | ------------------------------------------------------ |
+| id        | string                                                   | No       |                                                        |
+| item      | [Item](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  |                                                        |
+| quantity  | integer                                                  | **Yes**  | Quantity of the item being purchased.                  |
+| parent_id | string                                                   | No       | Parent line item identifier for any nested structures. |
 
 #### Line Item Response
 
-| Name      | Type                                                                     | Required | Description                                            |
-| --------- | ------------------------------------------------------------------------ | -------- | ------------------------------------------------------ |
-| id        | string                                                                   | **Yes**  |                                                        |
-| item      | [Item Response](/draft/specification/checkout/#item-response)            | **Yes**  |                                                        |
-| quantity  | integer                                                                  | **Yes**  | Quantity of the item being purchased.                  |
-| totals    | Array\[[Total Response](/draft/specification/checkout/#total-response)\] | **Yes**  | Line item totals breakdown.                            |
-| parent_id | string                                                                   | No       | Parent line item identifier for any nested structures. |
+| Name      | Type                                                               | Required | Description                                            |
+| --------- | ------------------------------------------------------------------ | -------- | ------------------------------------------------------ |
+| id        | string                                                             | **Yes**  |                                                        |
+| item      | [Item](https://ucp.dev/draft/specification/checkout/%7B)           | **Yes**  |                                                        |
+| quantity  | integer                                                            | **Yes**  | Quantity of the item being purchased.                  |
+| totals    | Array\[[Total](https://ucp.dev/draft/specification/checkout/%7B)\] | **Yes**  | Line item totals breakdown.                            |
+| parent_id | string                                                             | No       | Parent line item identifier for any nested structures. |
 
 ### Link
 
@@ -484,18 +508,18 @@ Businesses **MAY** define custom types for domain-specific needs. Platforms **SH
 
 ### Message
 
-This object MUST be one of the following types: [Message Error](/draft/specification/checkout/#message-error), [Message Warning](/draft/specification/checkout/#message-warning), [Message Info](/draft/specification/checkout/#message-info).
+This object MUST be one of the following types: [Message Error](https://ucp.dev/draft/specification/checkout/%7B), [Message Warning](https://ucp.dev/draft/specification/checkout/%7B), [Message Info](https://ucp.dev/draft/specification/checkout/%7B).
 
 ### Message Error
 
-| Name         | Type   | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ------------ | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| type         | string | **Yes**  | **Constant = error**. Message type discriminator.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| code         | string | **Yes**  | Error code. Possible values include: missing, invalid, out_of_stock, payment_declined, requires_sign_in, requires_3ds, requires_identity_linking. Freeform codes also allowed.                                                                                                                                                                                                                                                                                                                                 |
-| path         | string | No       | RFC 9535 JSONPath to the component the message refers to (e.g., $.items[1]).                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| content_type | string | No       | Content format, default = plain. **Enum:** `plain`, `markdown`                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| content      | string | **Yes**  | Human-readable message.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| severity     | string | **Yes**  | Declares who resolves this error. 'recoverable': agent can fix via API. 'requires_buyer_input': merchant requires information their API doesn't support collecting programmatically (checkout incomplete). 'requires_buyer_review': buyer must authorize before order placement due to policy, regulatory, or entitlement rules (checkout complete). Errors with 'requires\_*' severity contribute to 'status: requires_escalation'.* *Enum:*\* `recoverable`, `requires_buyer_input`, `requires_buyer_review` |
+| Name         | Type                                                           | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------ | -------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| type         | string                                                         | **Yes**  | **Constant = error**. Message type discriminator.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| code         | [Error Code](https://ucp.dev/draft/specification/checkout/%7B) | **Yes**  | Error code identifying the type of error. Standard errors are defined in specification (see examples), and have standardized semantics; freeform codes are permitted.                                                                                                                                                                                                                                                                                                                                          |
+| path         | string                                                         | No       | RFC 9535 JSONPath to the component the message refers to (e.g., $.items[1]).                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| content_type | string                                                         | No       | Content format, default = plain. **Enum:** `plain`, `markdown`                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| content      | string                                                         | **Yes**  | Human-readable message.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| severity     | string                                                         | **Yes**  | Declares who resolves this error. 'recoverable': agent can fix via API. 'requires_buyer_input': merchant requires information their API doesn't support collecting programmatically (checkout incomplete). 'requires_buyer_review': buyer must authorize before order placement due to policy, regulatory, or entitlement rules (checkout complete). Errors with 'requires\_*' severity contribute to 'status: requires_escalation'.* *Enum:*\* `recoverable`, `requires_buyer_input`, `requires_buyer_review` |
 
 ### Message Info
 
@@ -519,84 +543,26 @@ This object MUST be one of the following types: [Message Error](/draft/specifica
 
 ### Payment
 
-#### Payment Create Request
-
-| Name                   | Type                                                                             | Required | Description                                                                                                                                                                                                                |
-| ---------------------- | -------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| selected_instrument_id | string                                                                           | No       | The id of the currently selected payment instrument from the instruments array. Set by the agent when submitting payment, and echoed back by the merchant in finalized state.                                              |
-| instruments            | Array\[[Payment Instrument](/draft/specification/checkout/#payment-instrument)\] | No       | The payment instruments available for this payment. Each instrument is associated with a specific handler via the handler_id field. Handlers can extend the base payment_instrument schema to add handler-specific fields. |
-
-#### Payment Update Request
-
-| Name                   | Type                                                                             | Required | Description                                                                                                                                                                                                                |
-| ---------------------- | -------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| selected_instrument_id | string                                                                           | No       | The id of the currently selected payment instrument from the instruments array. Set by the agent when submitting payment, and echoed back by the merchant in finalized state.                                              |
-| instruments            | Array\[[Payment Instrument](/draft/specification/checkout/#payment-instrument)\] | No       | The payment instruments available for this payment. Each instrument is associated with a specific handler via the handler_id field. Handlers can extend the base payment_instrument schema to add handler-specific fields. |
-
-#### Payment Response
-
-| Name                   | Type                                                                                         | Required | Description                                                                                                                                                                                                                |
-| ---------------------- | -------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| handlers               | Array\[[Payment Handler Response](/draft/specification/checkout/#payment-handler-response)\] | **Yes**  | Processing configurations that define how payment instruments can be collected. Each handler specifies a tokenization or payment collection strategy.                                                                      |
-| selected_instrument_id | string                                                                                       | No       | The id of the currently selected payment instrument from the instruments array. Set by the agent when submitting payment, and echoed back by the merchant in finalized state.                                              |
-| instruments            | Array\[[Payment Instrument](/draft/specification/checkout/#payment-instrument)\]             | No       | The payment instruments available for this payment. Each instrument is associated with a specific handler via the handler_id field. Handlers can extend the base payment_instrument schema to add handler-specific fields. |
-
-### Payment Handler Response
-
-| Name               | Type          | Required | Description                                                                                                                                        |
-| ------------------ | ------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id                 | string        | **Yes**  | The unique identifier for this handler instance within the payment.handlers. Used by payment instruments to reference which handler produced them. |
-| name               | string        | **Yes**  | The specification name using reverse-DNS format. For example, dev.ucp.delegate_payment.                                                            |
-| version            | string        | **Yes**  | Handler version in YYYY-MM-DD format.                                                                                                              |
-| spec               | string        | **Yes**  | A URI pointing to the technical specification or schema that defines how this handler operates.                                                    |
-| config_schema      | string        | **Yes**  | A URI pointing to a JSON Schema used to validate the structure of the config object.                                                               |
-| instrument_schemas | Array[string] | **Yes**  |                                                                                                                                                    |
-| config             | object        | **Yes**  | A dictionary containing provider-specific configuration details, such as merchant IDs, supported networks, or gateway credentials.                 |
+| Name        | Type                                                                                     | Required | Description                                                                                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| instruments | Array\[[Selected Payment Instrument](https://ucp.dev/draft/specification/checkout/%7B)\] | No       | The payment instruments available for this payment. Each instrument is associated with a specific handler via the handler_id field. Handlers can extend the base payment_instrument schema to add handler-specific fields. |
 
 ### Payment Instrument
 
-This object MUST be one of the following types: [Card Payment Instrument](/draft/specification/checkout/#card-payment-instrument).
-
-### Card Payment Instrument
-
-| Name                  | Type                                                                    | Required | Description                                                                                                                                                        |
-| --------------------- | ----------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| id                    | string                                                                  | **Yes**  | A unique identifier for this instrument instance, assigned by the Agent. Used to reference this specific instrument in the 'payment.selected_instrument_id' field. |
-| handler_id            | string                                                                  | **Yes**  | The unique identifier for the handler instance that produced this instrument. This corresponds to the 'id' field in the Payment Handler definition.                |
-| type                  | string                                                                  | **Yes**  | **Constant = card**. Indicates this is a card payment instrument.                                                                                                  |
-| billing_address       | [Postal Address](/draft/specification/checkout/#postal-address)         | No       | The billing address associated with this payment method.                                                                                                           |
-| credential            | [Payment Credential](/draft/specification/checkout/#payment-credential) | No       |                                                                                                                                                                    |
-| brand                 | string                                                                  | **Yes**  | The card brand/network (e.g., visa, mastercard, amex).                                                                                                             |
-| last_digits           | string                                                                  | **Yes**  | Last 4 digits of the card number.                                                                                                                                  |
-| expiry_month          | integer                                                                 | No       | The month of the card's expiration date (1-12).                                                                                                                    |
-| expiry_year           | integer                                                                 | No       | The year of the card's expiration date.                                                                                                                            |
-| rich_text_description | string                                                                  | No       | An optional rich text description of the card to display to the user (e.g., 'Visa ending in 1234, expires 12/2025').                                               |
-| rich_card_art         | string                                                                  | No       | An optional URI to a rich image representing the card (e.g., card art provided by the issuer).                                                                     |
+| Name            | Type                                                                   | Required | Description                                                                                                                                                  |
+| --------------- | ---------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| id              | string                                                                 | **Yes**  | A unique identifier for this instrument instance, assigned by the platform.                                                                                  |
+| handler_id      | string                                                                 | **Yes**  | The unique identifier for the handler instance that produced this instrument. This corresponds to the 'id' field in the Payment Handler definition.          |
+| type            | string                                                                 | **Yes**  | The broad category of the instrument (e.g., 'card', 'tokenized_card'). Specific schemas will constrain this to a constant value.                             |
+| billing_address | [Postal Address](https://ucp.dev/draft/specification/checkout/%7B)     | No       | The billing address associated with this payment method.                                                                                                     |
+| credential      | [Payment Credential](https://ucp.dev/draft/specification/checkout/%7B) | No       | The base definition for any payment credential. Handlers define specific credential types.                                                                   |
+| display         | object                                                                 | No       | Display information for this payment instrument. Each payment instrument schema defines its specific display properties, as outlined by the payment handler. |
 
 ### Payment Credential
 
-This object MUST be one of the following types: [Token Credential Response](/draft/specification/checkout/#token-credential-response), [Card Credential](/draft/specification/checkout/#card-credential).
-
-### Token Credential Response
-
-| Name  | Type   | Required | Description                                                                |
-| ----- | ------ | -------- | -------------------------------------------------------------------------- |
-| type  | string | **Yes**  | The specific type of token produced by the handler (e.g., 'stripe_token'). |
-| token | string | **Yes**  | The token value.                                                           |
-
-### Card Credential
-
-| Name             | Type    | Required | Description                                                                                                                                            |
-| ---------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| type             | any     | **Yes**  | **Constant = card**. The credential type identifier for card credentials.                                                                              |
-| card_number_type | string  | **Yes**  | The type of card number. Network tokens are preferred with fallback to FPAN. See PCI Scope for more details. **Enum:** `fpan`, `network_token`, `dpan` |
-| number           | string  | No       | Card number.                                                                                                                                           |
-| expiry_month     | integer | No       | The month of the card's expiration date (1-12).                                                                                                        |
-| expiry_year      | integer | No       | The year of the card's expiration date.                                                                                                                |
-| name             | string  | No       | Cardholder name.                                                                                                                                       |
-| cvc              | string  | No       | Card CVC number.                                                                                                                                       |
-| cryptogram       | string  | No       | Cryptogram provided with network tokens.                                                                                                               |
-| eci_value        | string  | No       | Electronic Commerce Indicator / Security Level Indicator provided with network tokens.                                                                 |
+| Name | Type   | Required | Description                                                                                  |
+| ---- | ------ | -------- | -------------------------------------------------------------------------------------------- |
+| type | string | **Yes**  | The credential type discriminator. Specific schemas will constrain this to a constant value. |
 
 ### Postal Address
 
@@ -610,19 +576,18 @@ This object MUST be one of the following types: [Token Credential Response](/dra
 | postal_code      | string | No       | The postal code. For example, 94043.                                                                                                                                                                                                      |
 | first_name       | string | No       | Optional. First name of the contact associated with the address.                                                                                                                                                                          |
 | last_name        | string | No       | Optional. Last name of the contact associated with the address.                                                                                                                                                                           |
-| full_name        | string | No       | Optional. Full name of the contact associated with the address (if first_name or last_name fields are present they take precedence).                                                                                                      |
 | phone_number     | string | No       | Optional. Phone number of the contact associated with the address.                                                                                                                                                                        |
 
 ### Response
 
-| Name    | Type   | Required | Description                                                                                                                |
-| ------- | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------- |
-| name    | string | **Yes**  | Stable capability identifier in reverse-domain notation (e.g., dev.ucp.shopping.checkout). Used in capability negotiation. |
-| version | string | **Yes**  | Capability version in YYYY-MM-DD format.                                                                                   |
-| spec    | string | No       | URL to human-readable specification document.                                                                              |
-| schema  | string | No       | URL to JSON Schema for this capability's payload.                                                                          |
-| extends | string | No       | Parent capability this extends. Present for extensions, absent for root capabilities.                                      |
-| config  | object | No       | Capability-specific configuration (structure defined by each capability).                                                  |
+| Name    | Type    | Required | Description                                                                                                                     |
+| ------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| version | string  | **Yes**  | Entity version in YYYY-MM-DD format.                                                                                            |
+| spec    | string  | No       | URL to human-readable specification document.                                                                                   |
+| schema  | string  | No       | URL to JSON Schema defining this entity's structure and payloads.                                                               |
+| id      | string  | No       | Unique identifier for this entity instance. Used to disambiguate when multiple instances exist.                                 |
+| config  | object  | No       | Entity-specific configuration. Structure defined by each entity's schema.                                                       |
+| extends | OneOf[] | No       | Parent capability(s) this extends. Present for extensions, absent for root capabilities. Use array for multi-parent extensions. |
 
 ### Total
 
@@ -636,10 +601,15 @@ This object MUST be one of the following types: [Token Credential Response](/dra
 
 ### UCP Response Checkout
 
-| Name         | Type                                                         | Required | Description                                |
-| ------------ | ------------------------------------------------------------ | -------- | ------------------------------------------ |
-| version      | string                                                       | **Yes**  | UCP protocol version in YYYY-MM-DD format. |
-| capabilities | Array\[[Response](/draft/specification/checkout/#response)\] | **Yes**  | Active capabilities for this response.     |
+| Name             | Type   | Required | Description                                            |
+| ---------------- | ------ | -------- | ------------------------------------------------------ |
+| version          | string | **Yes**  | UCP version in YYYY-MM-DD format.                      |
+| services         | object | No       | Service registry keyed by reverse-domain name.         |
+| capabilities     | object | No       | Capability registry keyed by reverse-domain name.      |
+| payment_handlers | object | No       | Payment handler registry keyed by reverse-domain name. |
+| services         | any    | No       |                                                        |
+| capabilities     | any    | No       |                                                        |
+| payment_handlers | any    | **Yes**  |                                                        |
 
 ### Order Confirmation
 

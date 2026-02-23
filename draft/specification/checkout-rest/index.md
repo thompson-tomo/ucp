@@ -60,12 +60,22 @@ Content-Type: application/json
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11"
-      }
-    ]
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "2026-01-11"}
+      ]
+    },
+    "payment_handlers": {
+      "com.shopify.shop_pay": [
+        {
+          "id": "shop_pay_1234",
+          "version": "2026-01-11",
+          "config": {
+            "merchant_id": "shop_merchant_123"
+          }
+        }
+      ]
+    }
   },
   "id": "chk_1234567890",
   "status": "incomplete",
@@ -115,41 +125,15 @@ Content-Type: application/json
     }
   ],
   "payment": {
-    "handlers": [
-      {
-        "id": "com.google.pay",
-        "name": "gpay",
-        "version": "2024-12-03",
-        "spec": "https://developers.google.com/merchant/ucp/guides/gpay-payment-handler",
-        "config_schema": "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/gpay_config.json",
-        "instrument_schemas": [
-          "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/gpay_card_payment_instrument.json"
-        ],
-        "config": {
-          "allowed_payment_methods": [
-            {
-              "type": "CARD",
-              "parameters": {
-                "allowed_card_networks": [
-                  "VISA",
-                  "MASTERCARD",
-                  "AMEX"
-                ]
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "selected_instrument_id": "pi_gpay_5678",
     "instruments": [
       {
-        "id": "pi_gpay_5678",
-        "handler_id": "com.google.pay",
-        "type": "card",
-        "brand": "mastercard",
-        "last_digits": "5678",
-        "rich_text_description": "Google Pay •••• 5678"
+        "id": "instr_shop_pay_1",
+        "handler_id": "shop_pay_1234",
+        "type": "shop_pay",
+        "selected": true,
+        "display": {
+          "email": "buyer@example.com"
+        }
       }
     ]
   }
@@ -195,12 +179,22 @@ Content-Type: application/json
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11"
-      }
-    ]
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "2026-01-11"}
+      ]
+    },
+    "payment_handlers": {
+      "com.shopify.shop_pay": [
+        {
+          "id": "shop_pay_1234",
+          "version": "2026-01-11",
+          "config": {
+            "merchant_id": "shop_merchant_123"
+          }
+        }
+      ]
+    }
   },
   "id": "chk_1234567890",
   "status": "incomplete",
@@ -255,41 +249,15 @@ Content-Type: application/json
     }
   ],
   "payment": {
-    "handlers": [
-      {
-        "id": "com.google.pay",
-        "name": "gpay",
-        "version": "2024-12-03",
-        "spec": "https://ucp.dev/handlers/google_pay",
-        "config_schema": "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/gpay_config.json",
-        "instrument_schemas": [
-          "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/gpay_card_payment_instrument.json"
-        ],
-        "config": {
-          "allowed_payment_methods": [
-            {
-              "type": "CARD",
-              "parameters": {
-                "allowed_card_networks": [
-                  "VISA",
-                  "MASTERCARD",
-                  "AMEX"
-                ]
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "selected_instrument_id": "pi_gpay_5678",
     "instruments": [
       {
-        "id": "pi_gpay_5678",
-        "handler_id": "com.google.pay",
-        "type": "card",
-        "brand": "mastercard",
-        "last_digits": "5678",
-        "rich_text_description": "Google Pay •••• 5678"
+        "id": "instr_shop_pay_1",
+        "handler_id": "shop_pay_1234",
+        "type": "shop_pay",
+        "selected": true,
+        "display": {
+          "email": "buyer@example.com"
+        }
       }
     ]
   }
@@ -349,12 +317,29 @@ Content-Type: application/json
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11"
-      }
-    ],
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "2026-01-11"}
+      ]
+    },
+    "payment_handlers": {
+      "com.google.pay": [
+        {
+          "id": "gpay_1234",
+          "version": "2026-01-11",
+          "config": {
+            "allowed_payment_methods": [
+              {
+                "type": "CARD",
+                "parameters": {
+                  "allowed_card_networks": ["VISA", "MASTERCARD", "AMEX"]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
   },
   "id": "chk_1234567890",
   "status": "incomplete",
@@ -460,41 +445,17 @@ Content-Type: application/json
     ]
   },
   "payment": {
-    "handlers": [
-      {
-        "id": "com.google.pay",
-        "name": "gpay",
-        "version": "2024-12-03",
-        "spec": "https://ucp.dev/handlers/google_pay",
-        "config_schema": "https://ucp.dev/handlers/google_pay/config.json",
-        "instrument_schemas": [
-          "https://ucp.dev/handlers/google_pay/card_payment_instrument.json"
-        ],
-        "config": {
-          "allowed_payment_methods": [
-            {
-              "type": "CARD",
-              "parameters": {
-                "allowed_card_networks": [
-                  "VISA",
-                  "MASTERCARD",
-                  "AMEX"
-                ]
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "selected_instrument_id": "pi_gpay_5678",
     "instruments": [
       {
         "id": "pi_gpay_5678",
-        "handler_id": "com.google.pay",
+        "handler_id": "gpay_1234",
         "type": "card",
-        "brand": "mastercard",
-        "last_digits": "5678",
-        "rich_text_description": "Google Pay •••• 5678"
+        "selected": true,
+        "display": {
+          "brand": "mastercard",
+          "last_digits": "5678",
+          "rich_text_description": "Google Pay •••• 5678"
+        }
       }
     ]
   }
@@ -564,12 +525,22 @@ Content-Type: application/json
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11"
-      }
-    ],
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "2026-01-11"}
+      ]
+    },
+    "payment_handlers": {
+      "com.shopify.shop_pay": [
+        {
+          "id": "shop_pay_1234",
+          "version": "2026-01-11",
+          "config": {
+            "merchant_id": "shop_merchant_123"
+          }
+        }
+      ]
+    }
   },
   "id": "chk_1234567890",
   "status": "ready_for_complete",
@@ -666,41 +637,15 @@ Content-Type: application/json
     ]
   },
   "payment": {
-    "handlers": [
-      {
-        "id": "com.google.pay",
-        "name": "gpay",
-        "version": "2024-12-03",
-        "spec": "https://ucp.dev/handlers/google_pay",
-        "config_schema": "https://ucp.dev/handlers/google_pay/config.json",
-        "instrument_schemas": [
-          "https://ucp.dev/handlers/google_pay/card_payment_instrument.json"
-        ],
-        "config": {
-          "allowed_payment_methods": [
-            {
-              "type": "CARD",
-              "parameters": {
-                "allowed_card_networks": [
-                  "VISA",
-                  "MASTERCARD",
-                  "AMEX"
-                ]
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "selected_instrument_id": "pi_gpay_5678",
     "instruments": [
       {
-        "id": "pi_gpay_5678",
-        "handler_id": "com.google.pay",
-        "type": "card",
-        "brand": "mastercard",
-        "last_digits": "5678",
-        "rich_text_description": "Google Pay •••• 5678"
+        "id": "instr_shop_pay_1",
+        "handler_id": "shop_pay_1234",
+        "type": "shop_pay",
+        "selected": true,
+        "display": {
+          "email": "buyer@example.com"
+        }
       }
     ]
   }
@@ -717,25 +662,32 @@ UCP-Agent: profile="https://platform.example/profile"
 Content-Type: application/json
 
 {
-  "payment_data": {
-    "id": "pi_gpay_5678",
-    "handler_id": "com.google.pay",
-    "type": "card",
-    "brand": "mastercard",
-    "last_digits": "5678",
-    "rich_card_art": "https://cart-art-1.html",
-    "rich_text_description": "Google Pay •••• 5678",
-    "billing_address": {
-      "street_address": "123 Main St",
-      "address_locality": "Anytown",
-      "address_region": "CA",
-      "address_country": "US",
-      "postal_code": "12345"
-    },
-    "credential": {
-      "type": "PAYMENT_GATEWAY",
-      "token": "examplePaymentMethodToken"
-    }
+  "payment": {
+    "instruments": [
+      {
+        "id": "pi_gpay_5678",
+        "handler_id": "gpay_1234",
+        "type": "card",
+        "selected": true,
+        "display": {
+          "brand": "mastercard",
+          "last_digits": "5678",
+          "card_art": "https://cart-art-1.html",
+          "description": "Google Pay •••• 5678"
+        },
+        "billing_address": {
+          "street_address": "123 Main St",
+          "address_locality": "Anytown",
+          "address_region": "CA",
+          "address_country": "US",
+          "postal_code": "12345"
+        },
+        "credential": {
+          "type": "PAYMENT_GATEWAY",
+          "token": "examplePaymentMethodToken"
+        }
+      }
+    ]
   },
   "risk_signals": {
     //... risk signal related data (device fingerprint / risk token)
@@ -750,12 +702,29 @@ Content-Type: application/json
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11"
-      }
-    ],
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "2026-01-11"}
+      ]
+    },
+    "payment_handlers": {
+      "com.google.pay": [
+        {
+          "id": "gpay_1234",
+          "version": "2026-01-11",
+          "config": {
+            "allowed_payment_methods": [
+              {
+                "type": "CARD",
+                "parameters": {
+                  "allowed_card_networks": ["VISA", "MASTERCARD", "AMEX"]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
   },
   "id": "chk_123456789",
   "status": "completed",
@@ -856,41 +825,17 @@ Content-Type: application/json
     ]
   },
   "payment": {
-    "handlers": [
-      {
-        "id": "com.google.pay",
-        "name": "gpay",
-        "version": "2024-12-03",
-        "spec": "https://ucp.dev/handlers/google_pay",
-        "config_schema": "https://ucp.dev/handlers/google_pay/config.json",
-        "instrument_schemas": [
-          "https://ucp.dev/handlers/google_pay/card_payment_instrument.json"
-        ],
-        "config": {
-          "allowed_payment_methods": [
-            {
-              "type": "CARD",
-              "parameters": {
-                "allowed_card_networks": [
-                  "VISA",
-                  "MASTERCARD",
-                  "AMEX"
-                ]
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "selected_instrument_id": "pi_gpay_5678",
     "instruments": [
       {
         "id": "pi_gpay_5678",
-        "handler_id": "com.google.pay",
+        "handler_id": "gpay_1234",
         "type": "card",
-        "brand": "mastercard",
-        "last_digits": "5678",
-        "rich_text_description": "Google Pay •••• 5678"
+        "selected": true,
+        "display": {
+          "brand": "mastercard",
+          "last_digits": "5678",
+          "rich_text_description": "Google Pay •••• 5678"
+        }
       }
     ]
   }
@@ -914,12 +859,22 @@ Content-Type: application/json
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11"
-      }
-    ],
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "2026-01-11"}
+      ]
+    },
+    "payment_handlers": {
+      "com.shopify.shop_pay": [
+        {
+          "id": "shop_pay_1234",
+          "version": "2026-01-11",
+          "config": {
+            "merchant_id": "shop_merchant_123"
+          }
+        }
+      ]
+    }
   },
   "id": "chk_123456789",
   "status": "completed",
@@ -1020,41 +975,15 @@ Content-Type: application/json
     ]
   },
   "payment": {
-    "handlers": [
-      {
-        "id": "com.google.pay",
-        "name": "gpay",
-        "version": "2024-12-03",
-        "spec": "https://ucp.dev/handlers/google_pay",
-        "config_schema": "https://ucp.dev/handlers/google_pay/config.json",
-        "instrument_schemas": [
-          "https://ucp.dev/handlers/google_pay/card_payment_instrument.json"
-        ],
-        "config": {
-          "allowed_payment_methods": [
-            {
-              "type": "CARD",
-              "parameters": {
-                "allowed_card_networks": [
-                  "VISA",
-                  "MASTERCARD",
-                  "AMEX"
-                ]
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "selected_instrument_id": "pi_gpay_5678",
     "instruments": [
       {
-        "id": "pi_gpay_5678",
-        "handler_id": "com.google.pay",
-        "type": "card",
-        "brand": "mastercard",
-        "last_digits": "5678",
-        "rich_text_description": "Google Pay •••• 5678"
+        "id": "instr_shop_pay_1",
+        "handler_id": "shop_pay_1234",
+        "type": "shop_pay",
+        "selected": true,
+        "display": {
+          "email": "buyer@example.com"
+        }
       }
     ]
   }
@@ -1078,12 +1007,29 @@ Content-Type: application/json
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11"
-      }
-    ],
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "2026-01-11"}
+      ]
+    },
+    "payment_handlers": {
+      "com.google.pay": [
+        {
+          "id": "gpay_1234",
+          "version": "2026-01-11",
+          "config": {
+            "allowed_payment_methods": [
+              {
+                "type": "CARD",
+                "parameters": {
+                  "allowed_card_networks": ["VISA", "MASTERCARD", "AMEX"]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
   },
   "id": "chk_123456789",
   "status": "canceled", // Status is updated to canceled.
@@ -1180,41 +1126,17 @@ Content-Type: application/json
     ]
   },
   "payment": {
-    "handlers": [
-      {
-        "id": "com.google.pay",
-        "name": "gpay",
-        "version": "2024-12-03",
-        "spec": "https://ucp.dev/handlers/google_pay",
-        "config_schema": "https://ucp.dev/handlers/google_pay/config.json",
-        "instrument_schemas": [
-          "https://ucp.dev/handlers/google_pay/card_payment_instrument.json"
-        ],
-        "config": {
-          "allowed_payment_methods": [
-            {
-              "type": "CARD",
-              "parameters": {
-                "allowed_card_networks": [
-                  "VISA",
-                  "MASTERCARD",
-                  "AMEX"
-                ]
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "selected_instrument_id": "pi_gpay_5678",
     "instruments": [
       {
         "id": "pi_gpay_5678",
-        "handler_id": "com.google.pay",
+        "handler_id": "gpay_1234",
         "type": "card",
-        "brand": "mastercard",
-        "last_digits": "5678",
-        "rich_text_description": "Google Pay •••• 5678"
+        "selected": true,
+        "display": {
+          "brand": "mastercard",
+          "last_digits": "5678",
+          "rich_text_description": "Google Pay •••• 5678"
+        }
       }
     ]
   }
@@ -1227,18 +1149,21 @@ The following headers are defined for the HTTP binding and apply to all operatio
 
 **Request Headers**
 
-| Header              | Required | Description                                                                                                                                                                                   |
-| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Authorization`     | No       | Should contain oauth token representing the following 2 schemes: 1. Platform self authenticating (client_credentials). 2. Platform authenticating on behalf of end user (authorization_code). |
-| `X-API-Key`         | No       | Authenticates the platform with a reusable api key allocated to the platform by the business.                                                                                                 |
-| `Request-Signature` | **Yes**  | Ensure the authenticity and integrity of an HTTP message.                                                                                                                                     |
-| `Idempotency-Key`   | **Yes**  | Ensures duplicate operations don't happen during retries.                                                                                                                                     |
-| `Request-Id`        | **Yes**  | For tracing the requests across network layers and components.                                                                                                                                |
-| `User-Agent`        | No       | Identifies the user agent string making the call.                                                                                                                                             |
-| `Content-Type`      | No       | Representation Metadata. Tells the receiver what the data in the message body actually is.                                                                                                    |
-| `Accept`            | No       | Content Negotiation. The client tells the server what data formats it is capable of understanding.                                                                                            |
-| `Accept-Language`   | No       | Localization. Tells the receiver the user's preferred natural languages, often with "weights" or priorities.                                                                                  |
-| `Accept-Encoding`   | No       | Compression. The client tells the server which content-codings it supports, usually for compression                                                                                           |
+| Header            | Required | Description                                                                                                                                                                                                                                                   |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Authorization`   | No       | Should contain oauth token representing the following 2 schemes: 1. Platform self authenticating (client_credentials). 2. Platform authenticating on behalf of end user (authorization_code).                                                                 |
+| `X-API-Key`       | No       | Authenticates the platform with a reusable api key allocated to the platform by the business.                                                                                                                                                                 |
+| `Signature`       | No       | RFC 9421 HTTP Message Signature. Required when using HTTP Message Signatures for authentication. Format: `sig1=:<base64-signature>:`.                                                                                                                         |
+| `Signature-Input` | No       | RFC 9421 Signature-Input header. Required when using HTTP Message Signatures for authentication. Format: `sig1=("@method" "@path" ...);created=<timestamp>;keyid="<key-id>"`.                                                                                 |
+| `Content-Digest`  | No       | Body digest per RFC 9530. Required for requests/responses with a body. Format: `sha-256=:<base64-digest>:`.                                                                                                                                                   |
+| `Idempotency-Key` | **Yes**  | Ensures duplicate operations don't happen during retries.                                                                                                                                                                                                     |
+| `Request-Id`      | **Yes**  | For tracing the requests across network layers and components.                                                                                                                                                                                                |
+| `User-Agent`      | No       | Identifies the user agent string making the call.                                                                                                                                                                                                             |
+| `UCP-Agent`       | **Yes**  | Identifies the UCP agent making the call. All requests MUST include the UCP-Agent header containing the signer's profile URI using RFC 8941 Dictionary syntax. The URL MUST point to /.well-known/ucp. Format: profile="https://example.com/.well-known/ucp". |
+| `Content-Type`    | No       | Representation Metadata. Tells the receiver what the data in the message body actually is.                                                                                                                                                                    |
+| `Accept`          | No       | Content Negotiation. The client tells the server what data formats it is capable of understanding.                                                                                                                                                            |
+| `Accept-Language` | No       | Localization. Tells the receiver the user's preferred natural languages, often with "weights" or priorities.                                                                                                                                                  |
+| `Accept-Encoding` | No       | Compression. The client tells the server which content-codings it supports, usually for compression                                                                                                                                                           |
 
 ### Specific Header Requirements
 
@@ -1261,29 +1186,109 @@ UCP uses standard HTTP status codes to indicate the success or failure of an API
 | `400 Bad Request`           | The request was invalid or cannot be served.                                       |
 | `401 Unauthorized`          | Authentication is required and has failed or has not been provided.                |
 | `403 Forbidden`             | The request is authenticated but the user does not have the necessary permissions. |
-| `404 Not Found`             | The requested resource could not be found.                                         |
 | `409 Conflict`              | The request could not be completed due to a conflict (e.g., idempotent key reuse). |
+| `422 Unprocessable Entity`  | The profile content is malformed (discovery failure).                              |
+| `424 Failed Dependency`     | The profile URL is valid but fetch failed (discovery failure).                     |
 | `429 Too Many Requests`     | Rate limit exceeded.                                                               |
 | `503 Service Unavailable`   | Temporary unavailability.                                                          |
 | `500 Internal Server Error` | An unexpected condition was encountered on the server.                             |
 
 ### Error Responses
 
-Error responses follow the standard UCP error structure:
+See the [Core Specification](https://ucp.dev/draft/specification/overview/#error-handling) for the complete error code registry and transport binding examples.
+
+- **Protocol errors**: Return appropriate HTTP status code (401, 403, 409, 429, 503) with JSON body containing `code` and `content`.
+- **Business outcomes**: Return HTTP 200 with UCP envelope and `messages` array.
+
+#### Business Outcomes
+
+Business outcomes (including errors like unavailable merchandise) are returned with HTTP 200 and the UCP envelope containing `messages`:
 
 ```json
 {
-  "status": "requires_escalation",
+  "ucp": {
+    "version": "2026-01-11",
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [{"version": "2026-01-11"}]
+    }
+  },
+  "id": "checkout_abc123",
+  "status": "incomplete",
+  "line_items": [
+    {
+      "id": "item_456",
+      "quantity": 100,
+      "available_quantity": 12
+    }
+  ],
   "messages": [
     {
-      "type": "error",
-      "code": "invalid_cart_items",
-      "content": "One or more cart items are invalid",
-      "severity": "requires_buyer_input",
+      "type": "warning",
+      "code": "quantity_adjusted",
+      "content": "Quantity adjusted, requested 100 units but only 12 available",
+      "path": "$.line_items[0].quantity"
     }
-  ]
+  ],
+  "continue_url": "https://merchant.com/checkout/checkout_abc123"
 }
 ```
+
+## Message Signing
+
+Platforms **MAY** choose among authentication mechanisms (API keys, OAuth, mTLS, HTTP Message Signatures). When using HTTP Message Signatures, checkout operations follow the [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) specification.
+
+### Request Signing
+
+When HTTP Message Signatures are used, requests **MUST** include valid `Signature-Input` and `Signature` headers (and `Content-Digest` when a body is present) per RFC 9421:
+
+| Header            | Required | Description                  |
+| ----------------- | -------- | ---------------------------- |
+| `Signature-Input` | Yes      | Describes signed components  |
+| `Signature`       | Yes      | Contains the signature value |
+| `Content-Digest`  | Cond.\*  | SHA-256 hash of request body |
+
+\* Required for requests with a body (POST, PUT)
+
+**Example Signed Request:**
+
+```http
+POST /checkout-sessions HTTP/1.1
+Host: merchant.example.com
+Content-Type: application/json
+UCP-Agent: profile="https://platform.example/.well-known/ucp"
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+Content-Digest: sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:
+Signature-Input: sig1=("@method" "@authority" "@path" "idempotency-key" "content-digest" "content-type");keyid="platform-2025"
+Signature: sig1=:MEUCIQDTxNq8h7LGHpvVZQp1iHkFp9+3N8Mxk2zH1wK4YuVN8w...:
+
+{"line_items":[{"item":{"id":"item_123"},"quantity":2}]}
+```
+
+See [Message Signatures - REST Request Signing](https://ucp.dev/draft/specification/signatures/#rest-request-signing) for the complete signing algorithm.
+
+### Response Signing
+
+Response signatures are **RECOMMENDED** for:
+
+- `complete_checkout` responses (order confirmation)
+
+Response signatures are **OPTIONAL** for:
+
+- `create_checkout`, `get_checkout`, `update_checkout`, `cancel_checkout`
+
+**Example Signed Response:**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Digest: sha-256=:Y5fK8nLmPqRsT3vWxYzAbCdEfGhIjKlMnO...:
+Signature-Input: sig1=("@status" "content-digest" "content-type");keyid="merchant-2025"
+Signature: sig1=:MFQCIH7kL9nM2oP5qR8sT1uV4wX6yZaB3cD...:
+
+{"id":"chk_123","status":"completed","order":{"id":"ord_456"}}
+```
+
+See [Message Signatures - REST Response Signing](https://ucp.dev/draft/specification/signatures/#rest-response-signing) for the complete signing algorithm.
 
 ## Security Considerations
 
@@ -1295,5 +1300,6 @@ Authentication is optional and depends on business requirements. When authentica
 1. **API Keys**: Via `X-API-Key` header.
 1. **OAuth 2.0**: Via `Authorization: Bearer {token}` header, following [RFC 6749](https://tools.ietf.org/html/rfc6749).
 1. **Mutual TLS**: For high-security environments.
+1. **HTTP Message Signatures**: Per [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) (see [Message Signing](#message-signing) above).
 
 Businesses **MAY** require authentication for some operations while leaving others open (e.g., public checkout without authentication).

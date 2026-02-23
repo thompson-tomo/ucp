@@ -1,7 +1,5 @@
 # Universal Commerce Protocol (UCP) Official Specification
 
-**Version:** `2026-01-11`
-
 ## Overarching guidelines
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119.html) and [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174.html).
@@ -98,8 +96,10 @@ The `endpoint` field provides the base URL for API calls. OpenAPI paths are appe
 **Example:**
 
 ```json
-"rest": {
-  "schema": "https://ucp.dev/services/shopping/rest.openapi.json",
+{
+  "version": "2026-01-11",
+  "transport": "rest",
+  "schema": "https://ucp.dev/services/shopping/openapi.json",
   "endpoint": "https://business.example.com/api/v2"
 }
 ```
@@ -124,28 +124,53 @@ A **capability** is a feature within a service. It declares what functionality i
 
 #### Capability Definition
 
-| Name    | Type   | Required | Description                                                                                                                |
-| ------- | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------- |
-| name    | string | **Yes**  | Stable capability identifier in reverse-domain notation (e.g., dev.ucp.shopping.checkout). Used in capability negotiation. |
-| version | string | **Yes**  | Capability version in YYYY-MM-DD format.                                                                                   |
-| spec    | string | **Yes**  | URL to human-readable specification document.                                                                              |
-| schema  | string | **Yes**  | URL to JSON Schema for this capability's payload.                                                                          |
-| extends | string | No       | Parent capability this extends. Present for extensions, absent for root capabilities.                                      |
-| config  | object | No       | Capability-specific configuration (structure defined by each capability).                                                  |
+| Name    | Type    | Required | Description                                                                                                                     |
+| ------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| version | string  | No       | Entity version in YYYY-MM-DD format.                                                                                            |
+| spec    | string  | **Yes**  | URL to human-readable specification document.                                                                                   |
+| schema  | string  | **Yes**  | URL to JSON Schema defining this entity's structure and payloads.                                                               |
+| id      | string  | No       | Unique identifier for this entity instance. Used to disambiguate when multiple instances exist.                                 |
+| config  | object  | No       | Entity-specific configuration. Structure defined by each entity's schema.                                                       |
+| extends | OneOf[] | No       | Parent capability(s) this extends. Present for extensions, absent for root capabilities. Use array for multi-parent extensions. |
 
 #### Extensions
 
-An **extension** is an optional module that augments another capability. Extensions use the `extends` field to declare their parent:
+An **extension** is an optional module that augments another capability. Extensions use the `extends` field to declare their parent(s):
 
 ```json
 {
-  "name": "dev.ucp.shopping.fulfillment",
-  "version": "2026-01-11",
-  "spec": "https://ucp.dev/specification/fulfillment",
-  "schema": "https://ucp.dev/schemas/shopping/fulfillment.json",
-  "extends": "dev.ucp.shopping.checkout"
+  "dev.ucp.shopping.fulfillment": [
+    {
+      "version": "2026-01-23",
+      "spec": "https://ucp.dev/2026-01-23/specification/fulfillment",
+      "schema": "https://ucp.dev/2026-01-23/schemas/shopping/fulfillment.json",
+      "extends": "dev.ucp.shopping.checkout"
+    }
+  ]
 }
 ```
+
+##### Multi-Parent Extensions
+
+Extensions **MAY** extend multiple parent capabilities by using an array:
+
+```json
+{
+  "dev.ucp.shopping.discount": [
+    {
+      "version": "2026-01-23",
+      "spec": "https://ucp.dev/2026-01-23/specification/discount",
+      "schema": "https://ucp.dev/2026-01-23/schemas/shopping/discount.json",
+      "extends": ["dev.ucp.shopping.checkout", "dev.ucp.shopping.cart"]
+    }
+  ]
+}
+```
+
+When an extension declares multiple parents:
+
+- The extension **MAY** define different fields for each capability it extends (e.g., `loyalty_earned` for checkout, `loyalty_preview` for cart)
+- See [Intersection Algorithm](#intersection-algorithm) for negotiation rules
 
 Extensions can be:
 
@@ -164,13 +189,14 @@ Extensions can add new fields and modify shared structures (e.g., discounts modi
 
 #### Extension Schema Pattern
 
-Extension schemas define composed types using `allOf`. An example is as follows:
+Extension schemas define composed types using `allOf`. The `$defs` key **MUST** use the full parent capability name (reverse-domain format) to enable deterministic schema resolution:
 
 ```json
 {
   "$defs": {
     "discounts_object": { ... },
-    "checkout": {
+    "dev.ucp.shopping.checkout": {
+      "title": "Checkout with Discount",
       "allOf": [
         {"$ref": "checkout.json"},
         {
@@ -187,7 +213,29 @@ Extension schemas define composed types using `allOf`. An example is as follows:
 }
 ```
 
-Composed type names **MUST** use the pattern: `{capability-name}.{TypeName}`
+**Requirements:**
+
+- Extension schemas **MUST** have a `$defs` entry for each parent declared in `extends`
+- The `$defs` key **MUST** match the parent's full capability name exactly
+
+This convention ensures:
+
+- **Self-documenting**: The schema declares exactly which parents it extends
+- **Deterministic resolution**: The `extends` value maps directly to the `$defs` key
+- **Verifiable**: Build-time checks can confirm each `extends` entry has a matching `$defs` key
+
+#### Schema Resolution Convention
+
+To validate payloads, implementations resolve extension schemas as follows:
+
+1. Determine the root capability from the operation (e.g., checkout operations use `dev.ucp.shopping.checkout`)
+1. For each active extension, resolve and apply its `$defs[{root_capability}]`
+
+**Example:** A checkout response includes the discount extension.
+
+- Root capability: `dev.ucp.shopping.checkout`
+- Extension schema: `discount.json`
+- Resolve: `discount.json#/$defs/dev.ucp.shopping.checkout`
 
 #### Resolution Flow
 
@@ -210,70 +258,79 @@ Businesses publish their profile at `/.well-known/ucp`. An example:
   "ucp": {
     "version": "2026-01-11",
     "services": {
-      "dev.ucp.shopping": {
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/overview",
-        "rest": {
-          "schema": "https://ucp.dev/services/shopping/rest.openapi.json",
-          "endpoint": "https://business.example.com/ucp/v1"
+      "dev.ucp.shopping": [
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/overview",
+          "transport": "rest",
+          "endpoint": "https://business.example.com/ucp/v1",
+          "schema": "https://ucp.dev/services/shopping/openapi.json"
         },
-        "mcp": {
-          "schema": "https://ucp.dev/services/shopping/mcp.openrpc.json",
-          "endpoint": "https://business.example.com/ucp/mcp"
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/overview",
+          "transport": "mcp",
+          "endpoint": "https://business.example.com/ucp/mcp",
+          "schema": "https://ucp.dev/services/shopping/mcp.openrpc.json"
         },
-        "a2a": {
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/overview",
+          "transport": "a2a",
           "endpoint": "https://business.example.com/.well-known/agent-card.json"
         },
-        "embedded": {
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/overview",
+          "transport": "embedded",
           "schema": "https://ucp.dev/services/shopping/embedded.openrpc.json"
         }
-      }
+      ]
     },
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/checkout",
-        "schema": "https://ucp.dev/schemas/shopping/checkout.json"
-      },
-      {
-        "name": "dev.ucp.shopping.fulfillment",
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/fulfillment",
-        "schema": "https://ucp.dev/schemas/shopping/fulfillment.json",
-        "extends": "dev.ucp.shopping.checkout"
-      },
-      {
-        "name": "dev.ucp.shopping.discount",
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/discount",
-        "schema": "https://ucp.dev/schemas/shopping/discount.json",
-        "extends": "dev.ucp.shopping.checkout"
-      }
-    ]
-  },
-  "payment": {
-    "handlers": [
-      {
-        "id": "business_tokenizer",
-        "name": "com.example.business_tokenizer",
-        "version": "2026-01-11",
-        "spec": "https://example.com/specs/payments/business_tokenizer",
-        "config_schema": "https://example.com/specs/payments/merchant_tokenizer.json",
-        "instrument_schemas": [
-          "https://ucp.dev/schemas/shopping/types/card_payment_instrument.json"
-        ],
-        "config": {
-          "type": "CARD",
-          "tokenization_specification": {
-            "type": "PUSH",
-            "parameters": {
-              "token_retrieval_url": "https://api.psp.example.com/v1/tokens"
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/checkout",
+          "schema": "https://ucp.dev/schemas/shopping/checkout.json"
+        }
+      ],
+      "dev.ucp.shopping.fulfillment": [
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/fulfillment",
+          "schema": "https://ucp.dev/schemas/shopping/fulfillment.json",
+          "extends": "dev.ucp.shopping.checkout"
+        }
+      ],
+      "dev.ucp.shopping.discount": [
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/discount",
+          "schema": "https://ucp.dev/schemas/shopping/discount.json",
+          "extends": "dev.ucp.shopping.checkout"
+        }
+      ]
+    },
+    "payment_handlers": {
+      "com.example.processor_tokenizer": [
+        {
+          "id": "processor_tokenizer",
+          "version": "2026-01-11",
+          "spec": "https://example.com/specs/payments/processor_tokenizer",
+          "schema": "https://example.com/specs/payments/merchant_tokenizer.json",
+          "config": {
+            "type": "CARD",
+            "tokenization_specification": {
+              "type": "PUSH",
+              "parameters": {
+                "token_retrieval_url": "https://api.psp.example.com/v1/tokens"
+              }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   },
   "signing_keys": [
     {
@@ -289,7 +346,7 @@ Businesses publish their profile at `/.well-known/ucp`. An example:
 }
 ```
 
-The `ucp` object contains protocol metadata: version, services, and capabilities. Payment configuration is a sibling—see [Payment Architecture](#payment-architecture). The `signing_keys` array contains public keys (JWK format) used to verify signatures on webhooks and other authenticated messages from the business.
+The `ucp` object contains protocol metadata: version, services, capabilities, and payment handlers. The `signing_keys` array contains public keys (JWK format) used to verify signatures on webhooks and other authenticated messages from the business. See [Key Discovery](#key-discovery) for key lookup and resolution, and [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) for signing mechanics.
 
 #### Platform Profile
 
@@ -299,54 +356,69 @@ Platform profiles are similar and include signing keys for capabilities requirin
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/checkout",
-        "schema": "https://ucp.dev/schemas/shopping/checkout.json"
-      },
-      {
-        "name": "dev.ucp.shopping.fulfillment",
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/fulfillment",
-        "schema": "https://ucp.dev/schemas/shopping/fulfillment.json",
-        "extends": "dev.ucp.shopping.checkout"
-      },
-      {
-        "name": "dev.ucp.shopping.order",
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/order",
-        "schema": "https://ucp.dev/schemas/shopping/order.json",
-        "config": {
-          "webhook_url": "https://platform.example.com/webhooks/ucp/orders"
+    "services": {
+      "dev.ucp.shopping": [
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/overview",
+          "transport": "rest",
+          "schema": "https://ucp.dev/services/shopping/openapi.json"
         }
-      }
-    ]
-  },
-  "payment": {
-    "handlers": [
-      {
-        "id": "gpay",
-        "name": "com.google.pay",
-        "version": "2024-12-03",
-        "spec": "https://developers.google.com/merchant/ucp/guides/gpay-payment-handler",
-        "config_schema": "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/gpay_config.json",
-        "instrument_schemas": [
-          "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/gpay_card_payment_instrument.json"
-        ]
-      },
-      {
-        "id": "business_tokenizer",
-        "name": "dev.ucp.business_tokenizer",
-        "version": "2026-01-11",
-        "spec": "https://example.com/specs/payments/business_tokenizer-payment",
-        "config_schema": "https://ucp.dev/schemas/payments/delegate-payment.json",
-        "instrument_schemas": [
-          "https://ucp.dev/schemas/shopping/types/card_payment_instrument.json"
-        ]
-      }
-    ]
+      ]
+    },
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/checkout",
+          "schema": "https://ucp.dev/schemas/shopping/checkout.json"
+        }
+      ],
+      "dev.ucp.shopping.fulfillment": [
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/fulfillment",
+          "schema": "https://ucp.dev/schemas/shopping/fulfillment.json",
+          "extends": "dev.ucp.shopping.checkout"
+        }
+      ],
+      "dev.ucp.shopping.order": [
+        {
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specification/order",
+          "schema": "https://ucp.dev/schemas/shopping/order.json",
+          "config": {
+            "webhook_url": "https://platform.example.com/webhooks/ucp/orders"
+          }
+        }
+      ]
+    },
+    "payment_handlers": {
+      "com.google.pay": [
+        {
+          "id": "gpay_1234",
+          "version": "2024-12-03",
+          "spec": "https://developers.google.com/merchant/ucp/guides/gpay-payment-handler",
+          "schema": "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/gpay_config.json"
+        }
+      ],
+      "dev.shopify.shop_pay": [
+        {
+          "id": "shop_pay_1234",
+          "version": "2026-01-11",
+          "spec": "https://shopify.dev/ucp/shop-pay-handler",
+          "schema": "https://shopify.dev/ucp/schemas/shop-pay-config.json"
+        }
+      ],
+      "dev.ucp.processor_tokenizer": [
+        {
+          "id": "processor_tokenizer",
+          "version": "2026-01-11",
+          "spec": "https://example.com/specs/payments/processor_tokenizer-payment",
+          "schema": "https://ucp.dev/schemas/payments/delegate-payment.json"
+        }
+      ]
+    }
   },
   "signing_keys": [
     {
@@ -376,19 +448,24 @@ Content-Type: application/json
 {"line_items": [...]}
 ```
 
-**MCP Transport:** Platforms **MUST** use native dictionary structure in `_meta.ucp`:
+**MCP Transport:** Platforms **MUST** include a `meta` object containing request metadata:
 
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "create_checkout",
+  "method": "tools/call",
   "params": {
-    "_meta": {
-      "ucp": {
-        "profile": "https://agent.example/profiles/shopping-agent.json"
+    "name": "create_checkout",
+    "arguments": {
+      "meta": {
+        "ucp-agent": {
+          "profile": "https://agent.example/profiles/shopping-agent.json"
+        }
+      },
+      "checkout": {
+        "line_items": [...]
       }
-    },
-    "line_items": [...]
+    }
   },
   "id": 1
 }
@@ -417,45 +494,336 @@ Content-Type: application/json
 The capability intersection algorithm determines which capabilities are active for a session:
 
 1. **Compute intersection**: For each business capability, include it in the result if a platform capability with the same `name` exists.
-1. **Prune orphaned extensions**: Remove any capability where `extends` is set but the parent capability is not in the intersection.
+
+1. **Prune orphaned extensions**: Remove any capability where `extends` is set but **none** of its parent capabilities are in the intersection.
+
+   - For single-parent extensions (`extends: "string"`): parent must be present
+   - For multi-parent extensions (`extends: ["a", "b"]`): at least one parent must be present
+
 1. **Repeat pruning**: Continue step 2 until no more capabilities are removed (handles transitive extension chains).
 
 The result is the set of capabilities both parties support, with extension dependencies satisfied.
 
 #### Error Handling
 
-If negotiation fails, businesses **MUST** return an error response:
+UCP negotiation can fail in two ways:
 
-```json
+1. **Discovery failure**: The business cannot fetch or parse the platform's profile.
+1. **Negotiation failure**: The provided profile is valid but capability intersection is empty or versions are incompatible.
+
+These failure types require different handling:
+
+- **Discovery failure** → transport error with optional `continue_url`
+- **Negotiation failure** → UCP response with optional `continue_url`
+
+##### Error Codes
+
+**Negotiation Errors:**
+
+| Code                        | Description                                          | REST | MCP    |
+| --------------------------- | ---------------------------------------------------- | ---- | ------ |
+| `invalid_profile_url`       | Profile URL is malformed, missing, or unresolvable   | 400  | -32001 |
+| `profile_unreachable`       | Resolved URL but fetch failed (timeout, non-2xx)     | 424  | -32001 |
+| `profile_malformed`         | Fetched content is not valid JSON or violates schema | 422  | -32001 |
+| `capabilities_incompatible` | No compatible capabilities in intersection           | 200  | result |
+| `version_unsupported`       | Platform's UCP version is not supported              | 200  | result |
+
+**Signature Errors:**
+
+| Code                    | Description                                       | REST | MCP    |
+| ----------------------- | ------------------------------------------------- | ---- | ------ |
+| `signature_missing`     | Required signature header/field not present       | 401  | -32000 |
+| `signature_invalid`     | Signature verification failed                     | 401  | -32000 |
+| `key_not_found`         | Key ID not found in signer's `signing_keys`       | 401  | -32000 |
+| `digest_mismatch`       | Body digest doesn't match `Content-Digest` header | 400  | -32600 |
+| `algorithm_unsupported` | Signature algorithm not supported                 | 400  | -32600 |
+
+See [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) for signature verification details.
+
+**Protocol Errors:**
+
+| HTTP | Description                                    | MCP    |
+| ---- | ---------------------------------------------- | ------ |
+| 401  | Authentication required or credentials invalid | -32000 |
+| 403  | Authenticated but insufficient permissions     | -32000 |
+| 409  | Idempotency key reused with different payload  | -32000 |
+| 429  | Too many requests                              | -32000 |
+| 500  | Unexpected server error                        | -32603 |
+| 503  | Server temporarily unable to handle requests   | -32000 |
+
+For MCP over HTTP, the HTTP status code is the primary signal; the JSON-RPC `error.code` provides a secondary signal. Both transports **SHOULD** include `Retry-After` header (REST) or `error.data.retry_after` (MCP) for 429 and 503 responses.
+
+##### The `continue_url` Field
+
+When UCP negotiation fails, `continue_url` provides a fallback web experience. Businesses **SHOULD** provide the most contextually relevant URL:
+
+- For checkout operations: link to the cart or checkout page
+- For catalog operations: link to the product or search results
+- As a fallback: link to the storefront homepage
+
+This enables graceful degradation—agents can redirect buyers to complete their task through the standard web interface.
+
+##### Transport Bindings
+
+**Discovery Failure (424):**
+
+```http
+HTTP/1.1 424 Failed Dependency
+Content-Type: application/json
+
 {
-  "status": "requires_escalation",
-  "messages": [{
-    "type": "error",
-    "code": "version_unsupported",
-    "message": "Version 2026-01-11 is not supported.",
-    "severity": "requires_buyer_input"
-  }]
+  "code": "profile_unreachable",
+  "content": "Unable to fetch agent profile: connection timeout",
+  "continue_url": "https://merchant.com/cart"
 }
 ```
 
+**Negotiation Failure (200):**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "ucp": {
+    "version": "2026-01-11",
+    "capabilities": {}
+  },
+  "messages": [
+    {
+      "type": "error",
+      "code": "version_unsupported",
+      "content": "UCP version 2024-01-01 is not supported",
+      "severity": "requires_buyer_input"
+    }
+  ],
+  "continue_url": "https://merchant.com"
+}
+```
+
+**Protocol Error — Rate Limit (429):**
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+```
+
+**Protocol Error — Unauthorized (401):**
+
+```http
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer realm="ucp"
+```
+
+Protocol errors use standard HTTP status codes and headers. Response bodies are optional.
+
+**Discovery Failure (JSON-RPC error):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32001,
+    "message": "UCP discovery failed",
+    "data": {
+      "code": "profile_unreachable",
+      "content": "Unable to fetch agent profile: connection timeout",
+      "continue_url": "https://merchant.com/cart"
+    }
+  }
+}
+```
+
+**Negotiation Failure (JSON-RPC result):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "structuredContent": {
+      "ucp": {
+        "version": "2026-01-11",
+        "capabilities": {}
+      },
+      "messages": [
+        {
+          "type": "error",
+          "code": "version_unsupported",
+          "content": "UCP version 2024-01-01 is not supported",
+          "severity": "requires_buyer_input"
+        }
+      ],
+      "continue_url": "https://merchant.com"
+    },
+    "content": [
+      {"type": "text", "text": "{\"ucp\":{...},\"messages\":[...],\"continue_url\":\"...\"}"}
+    ]
+  }
+}
+```
+
+**Protocol Error — Rate Limit (JSON-RPC error):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32000,
+    "message": "Rate limit exceeded",
+    "data": {
+      "retry_after": 60
+    }
+  }
+}
+```
+
+**Protocol Error — Unauthorized (JSON-RPC error):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32000,
+    "message": "Unauthorized"
+  }
+}
+```
+
+When using Streamable HTTP transport, servers **MUST** return the corresponding HTTP status code (e.g., `429` for rate limit) alongside the JSON-RPC error. The HTTP status code is the primary signal for error type.
+
 #### Capability Declaration in Responses
 
-The `capabilities` array in responses indicates active capabilities:
+The `capabilities` registry in responses indicates active capabilities:
 
 ```json
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {"name": "dev.ucp.shopping.checkout", "version": "2026-01-11"},
-      {"name": "dev.ucp.shopping.fulfillment", "version": "2026-01-11"}
-    ]
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "2026-01-11"}
+      ],
+      "dev.ucp.shopping.fulfillment": [
+        {"version": "2026-01-11"}
+      ]
+    },
+    "payment_handlers": {
+      "com.example.processor_tokenizer": [
+        {"id": "processor_tokenizer", "version": "2026-01-11"}
+      ]
+    }
   },
   "id": "checkout_123",
   "line_items": [...]
   ... other fields
 }
 ```
+
+#### Response Capability Selection
+
+Businesses **MUST** include in `ucp.capabilities` only the capabilities that are:
+
+1. In the negotiated intersection for this session, AND
+1. Relevant to this response's operation type
+
+**Root Capability Relevance:**
+
+A root capability is relevant if it matches the operation type:
+
+- `create_checkout` / `update_checkout` / `complete_checkout` → `dev.ucp.shopping.checkout`
+- `create_cart` / `update_cart` → `dev.ucp.shopping.cart`
+- Order webhooks → `dev.ucp.shopping.order`
+
+**Extension Relevance:**
+
+An extension is relevant if **any** of its `extends` values matches a relevant root capability.
+
+**Selection Examples:**
+
+| Response Type | Includes                        | Does NOT Include             |
+| ------------- | ------------------------------- | ---------------------------- |
+| Checkout      | checkout, discount, fulfillment | cart, order                  |
+| Cart          | cart, discount                  | checkout, fulfillment, order |
+| Order         | order                           | checkout, cart, discount     |
+
+## Identity & Authentication
+
+UCP profiles serve dual purpose: they declare a party's **capabilities** for negotiation (see [Profile Structure](#profile-structure)) and publish **signing keys** for identity verification — enabling both capability negotiation and cryptographic authentication from a single document.
+
+Businesses publish their profile at `/.well-known/ucp` as the discovery entry point — platforms fetch it to determine protocol support, locate endpoints, and negotiate capabilities. Platforms advertise their profile URL per-request via the `UCP-Agent` header, enabling businesses to negotiate capabilities and verify identity. This design enables **permissionless onboarding** — any platform with a discoverable profile can interact with any business without prior registration.
+
+### Authentication Mechanisms
+
+Businesses **SHOULD** authenticate platforms to prevent impersonation and ensure message integrity. UCP is compatible with multiple authentication mechanisms:
+
+- **API Keys** — Pre-shared secrets exchanged out-of-band
+- **OAuth 2.0** — Client credentials or other OAuth flows
+- **mTLS** — Mutual TLS with client certificates
+- **HTTP Message Signatures** — Cryptographic signatures per [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) (see [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) for full specification)
+
+HTTP Message Signatures enable permissionless onboarding — businesses can verify platforms by their advertised public keys without negotiating shared secrets. The other mechanisms require prior credential exchange and imply a pre-established relationship.
+
+Business-to-platform webhooks **MUST** be signed. See [Message Signatures — When Signatures Apply](https://ucp.dev/draft/specification/signatures/#when-signatures-apply).
+
+#### Identity Binding
+
+Regardless of authentication mechanism, verifiers **MUST** ensure the authenticated identity is consistent with the `UCP-Agent` header:
+
+- **HTTP Message Signatures** — The signer's profile (from `UCP-Agent`) is verified by signature validation; no additional check needed.
+- **API keys / OAuth / mTLS** — Verifiers **MUST** confirm the authenticated principal is authorized to act on behalf of the profile identified in `UCP-Agent`. Reject requests where the authenticated identity and claimed profile conflict.
+
+### Key Discovery
+
+Both parties publish public keys in the `signing_keys` array of their UCP profile. Platforms fetch the business profile at `/.well-known/ucp`; businesses fetch the platform profile from the `UCP-Agent` header. The same profile that provides capabilities also provides verification keys — this is UCP's key resolution mechanism for [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) HTTP Message Signatures.
+
+**Key Lookup:**
+
+1. Obtain the signer's profile URL
+1. Fetch profile (or serve from cache)
+1. Extract `keyid` from `Signature-Input` and match to `kid` in `signing_keys[]`
+1. Verify signature using the corresponding public key
+
+For key format (JWK), supported algorithms, key rotation procedures, and complete signing/verification mechanics, see [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md).
+
+### Profile Requirements
+
+#### Hosting
+
+Both profiles must be reliably hosted. An unreliable or misconfigured profile endpoint may prevent the other party from processing requests.
+
+1. Profiles **MUST** be served over HTTPS.
+1. Profile endpoints **MUST NOT** use redirects (3xx).
+1. Profile responses **MUST** include a `Cache-Control` header with `public` and `max-age` of at least 60 seconds. Profiles **MUST NOT** be served with `private`, `no-store`, or `no-cache` directives.
+
+Profiles represent a party's stable identity and capabilities. Profile URLs are expected to remain consistent across requests and not contain per-transaction or per-session configuration — the caching policy above enforces this by requiring shared cache support with a minimum TTL.
+
+#### Fetching
+
+Businesses fetch platform profiles to perform capability negotiation and verify identity. UCP defines best practices that enable permissionless onboarding, but businesses retain full control over their access policies and **MAY** enforce additional rules based on established trust, observed behavior, or operational requirements.
+
+Businesses **SHOULD** maintain a registry of pre-approved platforms — platforms whose profiles have been validated and whose trust is established through out-of-band mechanisms (API key, OAuth credential, mTLS certificate, or prior vetting). Known platforms can be served efficiently based on cached identity and capabilities, and are not subject to discovery budget constraints.
+
+When a platform is *not recognized*, it triggers dynamic profile discovery. Businesses **SHOULD** establish a fixed discovery footprint so that resource consumption for resolving unrecognized platforms remains constant regardless of how many platforms request access. Strategies include:
+
+- **Fixed-size profile cache** (e.g., LRU) — bounds memory regardless of the number of unique profile URLs encountered
+- **Global rate limit** on discovery fetches — bounds outbound network without requiring per-origin state tracking
+- **Backoff on repeated failures** — reduces retries to persistently unavailable or malicious profile endpoints
+- **Asynchronous discovery** — defer profile resolution by responding with a `503` status code and `Retry-After` header, and resolve the profile in the background; when the platform retries, the validated profile is cached and capability negotiation proceeds synchronously
+
+When fetching profiles, the following apply:
+
+1. Implementations **MUST** reject profile URLs not served over HTTPS.
+1. Implementations **MUST NOT** follow redirects (3xx) on profile fetches.
+1. Implementations **SHOULD** enforce connect and response timeouts on profile fetches.
+1. Implementations **SHOULD** cache profiles with a minimum TTL floor of 60 seconds, regardless of the origin's `Cache-Control` headers.
+1. Implementations **MAY** refresh profiles asynchronously using stale-while-revalidate semantics.
+1. On signature verification failure with an unknown `kid`, implementations **MAY** force-refresh the cached profile — but **MUST NOT** do so more than once per TTL floor per origin.
+
+If a profile cannot be fetched (timeout, DNS failure, 5xx) or fails validation (invalid schema, signing keys, signature mismatch), businesses **MUST** reject the request with an appropriate error and status code (see [Error Handling](#error-handling)).
 
 ## Payment Architecture
 
@@ -497,9 +865,9 @@ A common source of confusion is the division of labor. The UCP payment model spl
 
 ### Payment in the Checkout Lifecycle
 
-The payment process follows a standard 3-step lifecycle within UCP: **Negotiation**, **Acquisition**, and **Completion**.
+When payment is required, the payment process follows a standard 3-step lifecycle within UCP: **Negotiation**, **Acquisition**, and **Completion**.
 
-1. **Negotiation (Business → Platform):** The business analyzes the cart and advertises available `handlers`. This tells the platform *how* to pay (e.g., "Use this specific payment credential provider endpoint with this public key").
+1. **Negotiation (Business → Platform):** The business advertises available payment handlers in their UCP profile. This tells the platform *how* to pay (e.g., "Use this specific payment credential provider endpoint with this public key").
 1. **Acquisition (Platform ↔ Payment Credential Provider):** The platform executes the handler's logic. This happens client-side or agent-side, directly with the payment credential provider (e.g., exchanging credentials for a network token). The business is not involved, ensuring raw data never touches the business's frontend API.
 1. **Completion (Platform → Business):** The platform submits the opaque credential (token) to the business. The business uses it to capture funds via their backend integration with the payment credential provider.
 
@@ -509,8 +877,8 @@ Payment Handlers are **specifications** (not entities) that define how payment i
 
 **Important distinction:**
 
-- **Payment Credential Provider** = The participant (entity like Google Pay, Stripe)
-- **Payment Handler** = The specification the provider authors (e.g., `com.google.pay`)
+- **Payment Credential Provider** = The participant (entity like Google Pay, Shop Pay)
+- **Payment Handler** = The specification the provider authors (e.g., `com.google.pay`, `dev.shopify.shop_pay`)
 
 Payment handlers allow for a variety of different payment instruments and token-types to be supported, including network tokens. They are standardized definitions typically authored by payment credential providers or the UCP governing body.
 
@@ -537,83 +905,101 @@ The following scenarios illustrate how different payment handlers and instrument
 
 #### Scenario A: Digital Wallet
 
-In this scenario, the platform identifies a digital wallet handler (e.g., `com.google.pay`, `dev.shopify.shop_pay`) and uses the wallet's API to acquire an encrypted payment token.
+In this scenario, the platform identifies a payment credential provider (e.g., `com.google.pay`, `dev.shopify.shop_pay`) and uses their API to acquire an encrypted payment token.
 
-**1. Business Advertisement (Response from Create Checkout)**
+##### 1. Business Advertisement (Response from Create Checkout)
 
 ```json
 {
-  "payment": {
-    "handlers": [
-      {
-        "id": "8c9202bd-63cc-4241-8d24-d57ce69ea31c",
-        "name": "com.google.pay",
-        "version": "2026-01-11",
-        "spec": "https://pay.google.com/gp/p/ucp/2026-01-11/",
-        "config_schema": "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/config.json",
-        "instrument_schemas": [
-          "https://pay.google.com/gp/p/ucp/2026-01-11/schemas/card_payment_instrument.json"
-        ],
-        "config": {
-          "api_version": 2,
-          "api_version_minor": 0,
-          "environment": "TEST",
-          "merchant_info": {
-            "merchant_name": "Example Merchant",
-            "merchant_id": "01234567890123456789",
-            "merchant_origin": "checkout.merchant.com"
-          },
-          "allowed_payment_methods": [
-            {
-              "type": "CARD",
-              "parameters": {
-                "allowed_auth_methods": ["PAN_ONLY"],
-                "allowed_card_networks": ["VISA", "MASTERCARD"]
-              },
-              "tokenization_specification": {
-                "type": "PAYMENT_GATEWAY",
+  "ucp": {
+    "version": "2026-01-11",
+    "payment_handlers": {
+      "com.google.pay": [
+        {
+          "id": "8c9202bd-63cc-4241-8d24-d57ce69ea31c",
+          "version": "2026-01-11",
+          "config": {
+            "api_version": 2,
+            "api_version_minor": 0,
+            "environment": "TEST",
+            "merchant_info": {
+              "merchant_name": "Example Merchant",
+              "merchant_id": "01234567890123456789",
+              "merchant_origin": "checkout.merchant.com"
+            },
+            "allowed_payment_methods": [
+              {
+                "type": "CARD",
                 "parameters": {
-                  "gateway": "example",
-                  "gatewayMerchantId": "exampleGatewayMerchantId"
+                  "allowed_auth_methods": ["PAN_ONLY"],
+                  "allowed_card_networks": ["VISA", "MASTERCARD"]
+                },
+                "tokenization_specification": {
+                  "type": "PAYMENT_GATEWAY",
+                  "parameters": {
+                    "gateway": "example",
+                    "gatewayMerchantId": "exampleGatewayMerchantId"
+                  }
                 }
               }
-            }
-          ]
+            ]
+          }
         }
-      }
-    ]
+      ],
+      "dev.shopify.shop_pay": [
+        {
+          "id": "shop_pay_1234",
+          "version": "2026-01-11",
+          "config": {
+            "shop_id": "shopify-559128571",
+            "environment": "production"
+          }
+        }
+      ]
+    }
   }
 }
 ```
 
-**2. Token Execution (Platform Side)** The platform recognizes `com.google.pay`. It passes the `config` into the Google Pay API. Google Pay returns the encrypted token data.
+##### 2. Token Execution (Platform Side)
 
-**3. Complete Checkout (Request to Business)** The Platform wraps the Google Pay response into a payment instrument.
+The platform recognizes `com.google.pay` or `dev.shopify.shop_pay`. It passes the `config` into the respective handler API. The handler returns the encrypted token data.
+
+##### 3. Complete Checkout (Request to Business)
+
+The Platform wraps the payment handler response into a payment instrument.
 
 ```json
 POST /checkout-sessions/{id}/complete
 
 {
-  "payment_data": {
-    "id": "pm_1234567890abc",
-    "handler_id": "8c9202bd-63cc-4241-8d24-d57ce69ea31c",
-    "type": "card",
-    "brand": "visa",
-    "last_digits": "4242",
-    "billing_address": {
-      "street_address": "123 Main Street",
-      "extended_address": "Suite 400",
-      "address_locality": "Charleston",
-      "address_region": "SC",
-      "postal_code": "29401",
-      "address_country": "US",
-      "first_name": "Jane",
-      "last_name": "Smith"
-    },
-    "credential": {
-      "type": "PAYMENT_GATEWAY",
-      "token": "{\"signature\":\"...\",\"protocolVersion\":\"ECv2\"...}"
-    }
+  "payment": {
+    "instruments": [
+      {
+        "id": "pm_1234567890abc",
+        "handler_id": "8c9202bd-63cc-4241-8d24-d57ce69ea31c",
+        "type": "card",
+        "selected": true,
+        "display": {
+          "brand": "visa",
+          "last_digits": "4242"
+        },
+        "billing_address": {
+          "street_address": "123 Main Street",
+          "extended_address": "Suite 400",
+          "address_locality": "Charleston",
+          "address_region": "SC",
+          "postal_code": "29401",
+          "address_country": "US",
+          "first_name": "Jane",
+          "last_name": "Smith"
+        },
+        "credential": {
+          "type": "PAYMENT_GATEWAY",
+          "token": "{\"signature\":\"...\",\"protocolVersion\":\"ECv2\"...}"
+        }
+      }
+    ]
   },
   "risk_signals": {
       // ...
@@ -625,38 +1011,47 @@ POST /checkout-sessions/{id}/complete
 
 In this scenario, the platform uses a generic tokenizer to request a session token or network tokens. The bank requires Strong Customer Authentication (SCA/3DS), forcing the business to pause completion and request a challenge.
 
-**1. Business Advertisement**
+##### 1. Business Advertisement
 
 ```json
 {
-  "payment": {
-    "handlers": [{
-      "id": "merchant_tokenizer",
-      "name": "com.example.tokenizer",
-      // ... more handler required field
-      "config": {
-        "token_url": "https://api.psp.com/tokens",
-        "public_key": "pk_123"
-      }
-    }]
+  "ucp": {
+    "payment_handlers": {
+      "com.example.tokenizer": [
+        {
+          "id": "merchant_tokenizer",
+          "version": "2026-01-11",
+          "spec": "https://example.com/specs/tokenizer",
+          "schema": "https://example.com/schemas/tokenizer.json",
+          "config": {
+            "token_url": "https://api.psp.com/tokens",
+            "public_key": "pk_123"
+          }
+        }
+      ]
+    }
   }
 }
 ```
 
-**2. Token Execution (Platform Side)**
+##### 2. Token Execution (Platform Side)
 
 The platform calls `https://api.psp.com/tokens` which identity **SHOULD** have previous legal binding connection with them and receives `tok_visa_123` (which could represent a vaulted card or network token).
 
-**3. Complete Checkout (Request to Business)**
+##### 3. Complete Checkout (Request to Business)
 
 ```json
 POST /checkout-sessions/{id}/complete
 
 {
-  "payment_data": {
-    "handler_id": "merchant_tokenizer",
-    // ... more instrument required field
-    "credential": { "token": "tok_visa_123" }
+  "payment": {
+    "instruments": [
+      {
+        "handler_id": "merchant_tokenizer",
+        // ... more instrument required field
+        "credential": { "token": "tok_visa_123" }
+      }
+    ]
   },
   "risk_signals": {
     // ... host could send risk_signals here
@@ -664,7 +1059,7 @@ POST /checkout-sessions/{id}/complete
 }
 ```
 
-**4. Challenge Required (Response from Business)**
+##### 4. Challenge Required (Response from Business)
 
 The business attempts the charge, but the PSP returns a "Soft Decline" requiring 3DS.
 
@@ -688,37 +1083,46 @@ HTTP/1.1 200 OK
 
 This scenario demonstrates the **Recommended Flow for Agents**. Instead of a session token, the agent generates cryptographic mandates.
 
-**1. Business Advertisement**
+##### 1. Business Advertisement
 
 ```json
 {
-  "payment": {
-    "handlers": [{
-      "id": "ap2_234352",
-      "name": "dev.ucp.ap2_mandate_compatible_handlers",
-      // ... other required handler fields
-    }]
+  "ucp": {
+    "payment_handlers": {
+      "dev.ucp.ap2_mandate_compatible_handlers": [
+        {
+          "id": "ap2_234352",
+          "version": "2026-01-11",
+          "spec": "https://ucp.dev/specs/ap2-handler",
+          "schema": "https://ucp.dev/schemas/ap2-handler.json"
+        }
+      ]
+    }
   }
 }
 ```
 
-**2. Agent Execution**
+##### 2. Agent Execution
 
 The agent cryptographically signs objects using the user's private key on a non-agentic surface.
 
-**3. Complete Checkout**
+##### 3. Complete Checkout
 
 ```json
 POST /checkout-sessions/{id}/complete
 
 {
-  "payment_data": {
-    "handler_id": "ap2_234352",
-    // other required instruments fields
-    "credential": {
-      "type": "card",
-      "token": "eyJhbGciOiJ...", // Token would contain payment_mandate, the signed proof of funds auth
-    }
+  "payment": {
+    "instruments": [
+      {
+        "handler_id": "ap2_234352",
+        // other required instruments fields
+        "credential": {
+          "type": "card",
+          "token": "eyJhbGciOiJ...", // Token would contain payment_mandate, the signed proof of funds auth
+        }
+      }
+    ]
   },
   "risk_signals": {
     "session_id": "abc_123_xyz",
@@ -734,7 +1138,7 @@ POST /checkout-sessions/{id}/complete
 
 ### PCI-DSS Scope Management
 
-**Platform Scope**
+#### Platform Scope
 
 Most platform implementations can **avoid PCI-DSS scope** by:
 
@@ -743,7 +1147,7 @@ Most platform implementations can **avoid PCI-DSS scope** by:
 - Forwarding credentials without the ability to use them directly
 - Using PSP tokenization payment handlers where raw credentials never pass through the platform
 
-**Business Scope**
+#### Business Scope
 
 Businesses can minimize PCI scope by:
 
@@ -752,7 +1156,7 @@ Businesses can minimize PCI scope by:
 - Never logging raw credentials
 - Delegating credential processing to PCI-certified payment credential providers
 
-**Payment Credential Provider Scope**
+#### Payment Credential Provider Scope
 
 Payment credential providers (PSPs, wallets) are typically PCI-DSS Level 1 certified and handle:
 
@@ -815,7 +1219,7 @@ UCP supports multiple transport protocols. Platforms and businesses effectively 
 
 ### REST Transport (Core)
 
-The primary transport for UCP is **HTTP/1.1** (or higher) using RESTful patterns.
+UCP supports **HTTP/1.1** (or higher) using RESTful patterns.
 
 - **Content-Type:** Requests and responses **MUST** use `application/json`.
 - **Methods:** Implementations **MUST** use standard HTTP verbs (e.g., `POST` for creation, `GET` for retrieval).
@@ -823,7 +1227,54 @@ The primary transport for UCP is **HTTP/1.1** (or higher) using RESTful patterns
 
 ### Model Context Protocol (MCP)
 
-UCP capabilities map 1:1 to MCP tools. A business **MAY** expose an MCP server that wraps their UCP implementation, allowing LLMs to call tools like `create_checkout` directly.
+UCP supports **[MCP protocol](https://modelcontextprotocol.io/specification/)**, which operates over JSON-RPC.
+
+#### Request Format
+
+MCP requests use the `tools/call` method with the operation name in `params.name` and UCP payload in `params.arguments`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "create_checkout",
+    "arguments": {
+      "meta": {"ucp-agent": {"profile": "https://..."}},
+      "checkout": {"line_items": [...]}
+    }
+  },
+  "id": 1
+}
+```
+
+#### Response Format
+
+MCP tool responses use a dual-output pattern for backward compatibility. UCP MCP servers:
+
+- **MUST** return the UCP response payload in `structuredContent`
+- **SHOULD** declare `outputSchema` in tool definitions, referencing the appropriate UCP JSON Schema for the capability
+- **SHOULD** also return serialized JSON in `content[]` for backward compatibility with clients not supporting `structuredContent`
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "structuredContent": {
+      "checkout": {
+        "ucp": {"version": "2026-01-11", "capabilities": {...}},
+        "id": "checkout_abc123",
+        "status": "incomplete",
+        ...
+      }
+    },
+    "content": [
+      {"type": "text", "text": "{\"checkout\":{\"ucp\":{...},\"id\":\"checkout_abc123\",...}}"}
+    ]
+  }
+}
+```
 
 ### Agent-to-Agent Protocol (A2A)
 
@@ -849,16 +1300,11 @@ UCP defines a set of standard capabilities:
 
 Detailed definitions for endpoints, schemas, and valid extensions for each capability are provided in their respective specification files. Extensions are typically versioned and defined alongside their parent capability.
 
-## Security & Authentication
+## Security
 
 ### Transport Security
 
 All UCP communication **MUST** occur over **HTTPS**.
-
-### Request Authentication
-
-- **Platform to Business:** Requests **SHOULD** be authenticated using standard headers (e.g., `Authorization: Bearer <token>`).
-- **Business to Platform (Webhooks):** Webhooks **MUST** be signed using a shared secret or asymmetric key to verify integrity and origin.
 
 ### Data Privacy
 
@@ -894,9 +1340,9 @@ Both businesses and platforms declare a single version in their profiles:
   "ucp": {
     "version": "2026-01-11",
     "services": { ... },
-    "capabilities": [ ... ]
-  },
-  "payment": { ... }
+    "capabilities": { ... },
+    "payment_handlers": { ... }
+  }
 }
 ```
 
@@ -904,9 +1350,10 @@ Both businesses and platforms declare a single version in their profiles:
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [ ... ]
-  },
-  "payment": { ... }
+    "services": { ... },
+    "capabilities": { ... },
+    "payment_handlers": { ... }
+  }
 }
 ```
 
@@ -926,7 +1373,8 @@ Response with version confirmation:
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [ ... ]
+    "capabilities": { ... },
+    "payment_handlers": { ... }
   },
   "id": "checkout_123",
   "status": "incomplete"
@@ -942,7 +1390,7 @@ Version unsupported error:
   "messages": [{
     "type": "error",
     "code": "version_unsupported",
-    "message": "Version 2026-01-12 is not supported. This business implements version 2026-01-11.",
+    "content": "Version 2026-01-12 is not supported. This business implements version 2026-01-11.",
     "severity": "requires_buyer_input"
   }]
 }
@@ -962,7 +1410,7 @@ The following changes **MAY** be introduced without a new version:
 - Changing the order of fields in responses
 - Changing the length or format of opaque strings (IDs, tokens)
 
-#### Breaking Changes:
+#### Breaking Changes
 
 The following changes **MUST NOT** be introduced without a new version:
 
@@ -1006,4 +1454,3 @@ Capabilities outside the `dev.ucp.*` namespace version fully independently. Vend
 | **Payment Service Provider**      | PSP     | The financial infrastructure provider that processes payments, authorizations, and settlements on behalf of the business.                                 |
 | **Platform**                      | -       | The consumer-facing surface (AI agent, app, website) acting on behalf of the user to discover businesses and facilitate commerce.                         |
 | **Verifiable Digital Credential** | VDC     | An Issuer-signed credential (set of claims) whose authenticity can be verified cryptographically. Used in UCP for secure payment authorizations.          |
-| **Verifiable Presentation**       | VP      | A presentation of one or more VDCs that includes a cryptographic proof of binding, used to prove authorization to a business or PSP.                      |

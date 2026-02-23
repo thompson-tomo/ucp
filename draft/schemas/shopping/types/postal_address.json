@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ucp.dev/schemas/shopping/types/postal_address.json",
+  "$id": "https://ucp.dev/draft/schemas/shopping/types/postal_address.json",
   "title": "Postal Address",
   "type": "object",
   "properties": {
@@ -35,10 +35,6 @@
     "last_name": {
       "type": "string",
       "description": "Optional. Last name of the contact associated with the address."
-    },
-    "full_name": {
-      "type": "string",
-      "description": "Optional. Full name of the contact associated with the address (if first_name or last_name fields are present they take precedence)."
     },
     "phone_number": {
       "type": "string",

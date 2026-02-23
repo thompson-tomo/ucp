@@ -1,7 +1,5 @@
 # Discount Extension
 
-**Version:** `2026-01-11`
-
 ## Overview
 
 Discount extension allows businesses to indicate that they support discount codes on checkout sessions, and specifies how the discount codes are to be shared between the platform and the business.
@@ -25,15 +23,16 @@ Businesses advertise discount support in their profile:
 {
   "ucp": {
     "version": "2026-01-11",
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.discount",
-        "version": "2026-01-11",
-        "extends": "dev.ucp.shopping.checkout",
-        "spec": "https://ucp.dev/specification/discount",
-        "schema": "https://ucp.dev/schemas/shopping/discount.json"
-      }
-    ]
+    "capabilities": {
+      "dev.ucp.shopping.discount": [
+        {
+          "version": "2026-01-11",
+          "extends": "dev.ucp.shopping.checkout",
+          "spec": "https://ucp.dev/specification/discount",
+          "schema": "https://ucp.dev/schemas/shopping/discount.json"
+        }
+      ]
+    }
   }
 }
 ```
@@ -44,22 +43,22 @@ When this capability is active, checkout is extended with a `discounts` object.
 
 ### Discounts Object
 
-| Name    | Type                                                                         | Required | Description                                                                                                |
-| ------- | ---------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
-| codes   | Array[string]                                                                | No       | Discount codes to apply. Case-insensitive. Replaces previously submitted codes. Send empty array to clear. |
-| applied | Array\[[Applied Discount](/draft/specification/discount/#applied-discount)\] | No       | Discounts successfully applied (code-based and automatic).                                                 |
+| Name    | Type                                                                          | Required | Description                                                                                                |
+| ------- | ----------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| codes   | Array[string]                                                                 | No       | Discount codes to apply. Case-insensitive. Replaces previously submitted codes. Send empty array to clear. |
+| applied | Array\[[Applied Discount](https://ucp.dev/draft/specification/discount/%7B)\] | No       | Discounts successfully applied (code-based and automatic).                                                 |
 
 ### Applied Discount
 
-| Name        | Type                                                             | Required | Description                                                                                                                      |
-| ----------- | ---------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| code        | string                                                           | No       | The discount code. Omitted for automatic discounts.                                                                              |
-| title       | string                                                           | **Yes**  | Human-readable discount name (e.g., 'Summer Sale 20% Off').                                                                      |
-| amount      | integer                                                          | **Yes**  | Total discount amount in minor (cents) currency units.                                                                           |
-| automatic   | boolean                                                          | No       | True if applied automatically by merchant rules (no code required).                                                              |
-| method      | string                                                           | No       | Allocation method. 'each' = applied independently per item. 'across' = split proportionally by value. **Enum:** `each`, `across` |
-| priority    | integer                                                          | No       | Stacking order for discount calculation. Lower numbers applied first (1 = first).                                                |
-| allocations | Array\[[Allocation](/draft/specification/discount/#allocation)\] | No       | Breakdown of where this discount was allocated. Sum of allocation amounts equals total amount.                                   |
+| Name        | Type                                                                    | Required | Description                                                                                                                      |
+| ----------- | ----------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| code        | string                                                                  | No       | The discount code. Omitted for automatic discounts.                                                                              |
+| title       | string                                                                  | **Yes**  | Human-readable discount name (e.g., 'Summer Sale 20% Off').                                                                      |
+| amount      | integer                                                                 | **Yes**  | Total discount amount in minor (cents) currency units.                                                                           |
+| automatic   | boolean                                                                 | No       | True if applied automatically by merchant rules (no code required).                                                              |
+| method      | string                                                                  | No       | Allocation method. 'each' = applied independently per item. 'across' = split proportionally by value. **Enum:** `each`, `across` |
+| priority    | integer                                                                 | No       | Stacking order for discount calculation. Lower numbers applied first (1 = first).                                                |
+| allocations | Array\[[Allocation](https://ucp.dev/draft/specification/discount/%7B)\] | No       | Breakdown of where this discount was allocated. Sum of allocation amounts equals total amount.                                   |
 
 ### Allocation
 
@@ -399,4 +398,4 @@ Multiple discounts applied with full allocation breakdown:
 
 With this data, an agent can explain:
 
-> "Your T-Shirt ($60) got $12 off from the 20% summer sale, plus $3 from your loyalty reward (split proportionally). Total savings on this item: $15."
+> "Your T-Shirt ($60) got $12 off from the 20% summer sale, plus $3 from your

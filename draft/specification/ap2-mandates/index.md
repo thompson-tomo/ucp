@@ -1,7 +1,5 @@
 # AP2 Mandates Extension
 
-**Version:** `2026-01-11`
-
 ## Overview
 
 The AP2 Mandates extension enables the secure exchange of user intents and authorizations using **Verifiable Digital Credentials**. It extends the standard Shopping Service Checkout capability to support the **[AP2 Protocol](https://ap2-protocol.org/)**.
@@ -34,26 +32,28 @@ Businesses declare support by adding `dev.ucp.shopping.ap2_mandate` to their `ca
 
 ```json
 {
-  "capabilities": [
-    {
-      "name": "dev.ucp.shopping.checkout",
-      "version": "2026-01-11",
-      "spec": "https://ucp.dev/specification/checkout",
-      "schema": "https://ucp.dev/schemas/shopping/checkout.json"
-    },
-    {
-      "name": "dev.ucp.shopping.ap2_mandate",
-      "version": "2026-01-11",
-      "spec": "https://ucp.dev/specification/ap2-mandates",
-      "schema": "https://ucp.dev/schemas/shopping/ap2_mandate.json",
-      "extends": "dev.ucp.shopping.checkout",
-      "config": {
-        "vp_formats_supported": {
-          "dc+sd-jwt": { }
+  "capabilities": {
+    "dev.ucp.shopping.checkout": [
+      {
+        "version": "2026-01-11",
+        "spec": "https://ucp.dev/specification/checkout",
+        "schema": "https://ucp.dev/schemas/shopping/checkout.json"
+      }
+    ],
+    "dev.ucp.shopping.ap2_mandate": [
+      {
+        "version": "2026-01-11",
+        "spec": "https://ucp.dev/specification/ap2-mandates",
+        "schema": "https://ucp.dev/schemas/shopping/ap2_mandate.json",
+        "extends": "dev.ucp.shopping.checkout",
+        "config": {
+          "vp_formats_supported": {
+            "dc+sd-jwt": { }
+          }
         }
       }
-    }
-  ]
+    ]
+  }
 }
 ```
 
@@ -81,15 +81,14 @@ If a public key cannot be resolved, or if the signature is invalid, the business
 
 ## Cryptographic Requirements
 
-### Signature Algorithm
+This extension uses the cryptographic primitives defined in the [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) specification:
 
-All signatures **MUST** use one of the following algorithms:
+- **Algorithms:** ES256 (required), ES384, ES512
+- **Canonicalization:** JCS ([RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785))
+- **Key Format:** JWK ([RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517))
+- **Key Discovery:** `signing_keys[]` in `/.well-known/ucp` (see [Key Discovery](https://ucp.dev/draft/specification/overview/#key-discovery))
 
-| Algorithm | Description                                           |
-| --------- | ----------------------------------------------------- |
-| `ES256`   | ECDSA using P-256 curve and SHA-256 (**RECOMMENDED**) |
-| `ES384`   | ECDSA using P-384 curve and SHA-384                   |
-| `ES512`   | ECDSA using P-521 curve and SHA-512                   |
+See [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) for complete details on algorithms, key format, and key rotation.
 
 ### Business Authorization
 
@@ -148,10 +147,10 @@ sign_checkout(checkout, private_key, kid, alg="ES256"):
 
 Mandates are **SD-JWT** credentials with Key Binding (`+kb`). The platform **MUST** produce two distinct mandate artifacts:
 
-| Mandate              | UCP Placement          | Purpose                                              |
-| -------------------- | ---------------------- | ---------------------------------------------------- |
-| **checkout_mandate** | `ap2.checkout_mandate` | Proof bound to checkout terms, protects business     |
-| **payment_mandate**  | `payment_data.token`   | Proof bound to payment authorization, protects funds |
+| Mandate              | UCP Placement                             | Purpose                                              |
+| -------------------- | ----------------------------------------- | ---------------------------------------------------- |
+| **checkout_mandate** | `ap2.checkout_mandate`                    | Proof bound to checkout terms, protects business     |
+| **payment_mandate**  | `payment.instruments[*].credential.token` | Proof bound to payment authorization, protects funds |
 
 The checkout mandate **MUST** contain the full checkout response including the `ap2.merchant_authorization` field. This creates a nested cryptographic binding where the platform's signature covers the business's signature.
 
@@ -159,11 +158,17 @@ The checkout mandate **MUST** contain the full checkout response including the `
 
 ### Canonicalization
 
-For signature computation over JSON payloads, implementations **MUST** use **JSON Canonicalization Scheme (JCS)** as defined in [RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785).
+All JSON payloads **MUST** be canonicalized using **JSON Canonicalization Scheme (JCS)** per [RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785).
 
-JCS produces a deterministic, byte-for-byte identical representation of JSON data, ensuring signatures can be verified regardless of whitespace, key ordering, or Unicode normalization differences.
+**Why JCS for Mandates?** UCP request signatures use `Content-Digest` (raw bytes) without canonicalization — the request is signed and verified immediately over the same HTTP connection. Mandates are different:
 
-**Canonicalization Rule:** When computing the business's signature, exclude the `ap2` field entirely. This ensures future AP2 fields are automatically handled.
+- **Durability** — Mandates are stored as evidence of user consent. They may be retrieved and verified days or months later.
+- **Cross-system transmission** — Mandates pass through multiple systems (platform → business → PSP → card network) that may re-serialize JSON.
+- **Reproducibility** — Any party must reconstruct the exact signed bytes from the logical JSON content, regardless of serialization differences.
+
+JCS ensures that semantically identical JSON produces byte-identical output, making signatures reproducible across implementations and time.
+
+**AP2-Specific Rule:** When computing the business's `merchant_authorization` signature, exclude the `ap2` field entirely. This ensures future AP2 fields are automatically handled.
 
 ## The Mandate Flow
 
@@ -173,22 +178,22 @@ Once the `dev.ucp.shopping.ap2_mandate` capability is negotiated, the session is
 
 The platform initiates the session. The business returns the `Checkout` object with `ap2.merchant_authorization` embedded in the response body.
 
-| Name         | Type                                                                              | Required | Description                                                                                                                                                                                                                                                     |
-| ------------ | --------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Checkout](/draft/specification/checkout/#ucp-response-checkout)     | **Yes**  |                                                                                                                                                                                                                                                                 |
-| id           | string                                                                            | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
-| line_items   | Array\[[Line Item Response](/draft/specification/checkout/#line-item-response)\]  | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
-| buyer        | [Buyer](/draft/specification/checkout/#buyer)                                     | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
-| status       | string                                                                            | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
-| currency     | string                                                                            | **Yes**  | ISO 4217 currency code.                                                                                                                                                                                                                                         |
-| totals       | Array\[[Total Response](/draft/specification/checkout/#total-response)\]          | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
-| messages     | Array\[[Message](/draft/specification/checkout/#message)\]                        | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
-| links        | Array\[[Link](/draft/specification/checkout/#link)\]                              | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
-| expires_at   | string                                                                            | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
-| continue_url | string                                                                            | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
-| payment      | [Payment Response](/draft/specification/checkout/#payment-response)               | **Yes**  |                                                                                                                                                                                                                                                                 |
-| order        | [Order Confirmation](/draft/specification/checkout/#order-confirmation)           | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
-| ap2          | [Ap2 Checkout Response](/draft/specification/ap2-mandates/#ap2-checkout-response) | No       | AP2 extension data including merchant authorization.                                                                                                                                                                                                            |
+| Name         | Type          | Required | Description                                                                                                                                                                                                                                                     |
+| ------------ | ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp          | any           | **Yes**  | UCP metadata for checkout responses.                                                                                                                                                                                                                            |
+| id           | string        | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
+| line_items   | Array[object] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
+| buyer        | object        | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
+| status       | string        | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
+| currency     | string        | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                          |
+| totals       | Array[object] | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
+| messages     | Array[object] | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
+| links        | Array[object] | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
+| expires_at   | string        | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
+| continue_url | string        | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
+| payment      | object        | No       | Payment configuration containing handlers.                                                                                                                                                                                                                      |
+| order        | object        | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
+| ap2          | any           | No       |                                                                                                                                                                                                                                                                 |
 
 **Example Response:**
 
@@ -265,37 +270,44 @@ The business trusts the Credential Issuer (Bank) and verifies the user's Key Bin
 
 Once the mandates are generated, the platform submits them in the completion request:
 
-| Name | Type                                                                            | Required | Description                                    |
-| ---- | ------------------------------------------------------------------------------- | -------- | ---------------------------------------------- |
-| ap2  | [Ap2 Complete Request](/draft/specification/ap2-mandates/#ap2-complete-request) | No       | AP2 extension data including checkout mandate. |
+| Name             | Type                                                                     | Required | Description                                      |
+| ---------------- | ------------------------------------------------------------------------ | -------- | ------------------------------------------------ |
+| checkout_mandate | [Checkout Mandate](https://ucp.dev/draft/specification/ap2-mandates/%7B) | No       | SD-JWT+kb proving user authorized this checkout. |
 
 ```json
 {
-  "payment_data": {
-      "id": "instr_1",
-      "handler_id": "gpay",
-      "type": "card",
-      "description": "Visa •••• 1234",
-      "billing_address": {
-        "street_address": "123 Main St",
-        "address_locality": "Anytown",
-        "address_region": "CA",
-        "address_country": "US",
-        "postal_code": "12345"
-      },
-      "credential": {
-        "type": "PAYMENT_GATEWAY",
-        "token": "examplePaymentMethodToken"
+  "payment": {
+    "instruments": [
+      {
+        "id": "instr_1",
+        "handler_id": "gpay_1234",
+        "type": "card",
+        "selected": true,
+        "display": {
+          "description": "Visa •••• 1234",
+        },
+        "billing_address": {
+          "street_address": "123 Main St",
+          "address_locality": "Anytown",
+          "address_region": "CA",
+          "address_country": "US",
+          "postal_code": "12345"
+        },
+        "credential": {
+          "type": "PAYMENT_GATEWAY",
+          "token": "examplePaymentMethodToken"
+        }
       }
+    ]
   },
   "ap2": {
-     "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6InZjK3NkLWp3dCJ9..." // The User-Signed SD-JWT+kb / platform provider signed SD-JWT / delegated SD-JWT-KB
+    "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6InZjK3NkLWp3dCJ9..." // The User-Signed SD-JWT+kb / platform provider signed SD-JWT / delegated SD-JWT-KB
   }
 }
 ```
 
 - `ap2.checkout_mandate`: The SD-JWT+kb checkout mandate containing the full checkout (with `ap2.merchant_authorization`)
-- `payment_data.token`: Contains the payment mandate (composite token)
+- `payment.instruments[*].credential.token`: Contains the payment mandate (composite token)
 
 ## Verification & Processing
 
@@ -342,25 +354,25 @@ JWS Detached Content signature (RFC 7515 Appendix F) over the checkout response 
 
 ### AP2 Checkout Response
 
-The `ap2` object included in CREATE / UPDATE checkout responses.
+The `ap2` object included in checkout responses.
 
-| Name                   | Type                                                                                | Required | Description                                                |
-| ---------------------- | ----------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------- |
-| merchant_authorization | [Merchant Authorization](/draft/specification/ap2-mandates/#merchant-authorization) | **Yes**  | Merchant's signature proving checkout terms are authentic. |
-
-### AP2 Complete Request
-
-The `ap2` object included in COMPLETE checkout requests.
-
-| Name             | Type                                                                    | Required | Description                                      |
-| ---------------- | ----------------------------------------------------------------------- | -------- | ------------------------------------------------ |
-| checkout_mandate | [Checkout Mandate](/draft/specification/ap2-mandates/#checkout-mandate) | **Yes**  | SD-JWT+kb proving user authorized this checkout. |
+| Name                   | Type                                                                           | Required | Description                                                |
+| ---------------------- | ------------------------------------------------------------------------------ | -------- | ---------------------------------------------------------- |
+| merchant_authorization | [Merchant Authorization](https://ucp.dev/draft/specification/ap2-mandates/%7B) | No       | Merchant's signature proving checkout terms are authentic. |
 
 ### Checkout Mandate
 
 SD-JWT+kb credential in `ap2.checkout_mandate`. Proving user authorization for the checkout. Contains the full checkout including `ap2.merchant_authorization`.
 
 **Pattern:** `^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+(~[A-Za-z0-9_-]+)*$`
+
+### AP2 Complete Request
+
+The `ap2` object included in COMPLETE checkout requests.
+
+| Name             | Type                                                                     | Required | Description                                      |
+| ---------------- | ------------------------------------------------------------------------ | -------- | ------------------------------------------------ |
+| checkout_mandate | [Checkout Mandate](https://ucp.dev/draft/specification/ap2-mandates/%7B) | No       | SD-JWT+kb proving user authorized this checkout. |
 
 ### Error Codes
 
@@ -376,4 +388,3 @@ Error codes specific to AP2 mandate verification.
 | `mandate_expired`                | The mandate `exp` timestamp has passed.                           |
 | `mandate_scope_mismatch`         | The mandate is bound to a different checkout.                     |
 | `merchant_authorization_invalid` | The business authorization signature could not be verified.       |
-| `merchant_authorization_missing` | AP2 negotiated but response lacks `ap2.merchant_authorization`.   |
