@@ -54,6 +54,7 @@ ______________________________________________________________________
 | line_items    | Array\[[Order Line Item](https://ucp.dev/draft/specification/reference/%7B)\]  | **Yes**  | Immutable line items — source of truth for what was ordered.                                                                                 |
 | fulfillment   | object                                                                         | **Yes**  | Fulfillment data: buyer expectations and what actually happened.                                                                             |
 | adjustments   | Array\[[Adjustment](https://ucp.dev/draft/specification/reference/%7B)\]       | No       | Append-only event log of money movements (refunds, returns, credits, disputes, cancellations, etc.) that exist independently of fulfillment. |
+| currency      | string                                                                         | No       | ISO 4217 currency code. MUST match the currency from the originating checkout session.                                                       |
 | totals        | Array\[[Total](https://ucp.dev/draft/specification/reference/%7B)\]            | **Yes**  | Different totals for the order.                                                                                                              |
 
 ______________________________________________________________________
