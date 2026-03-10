@@ -65,6 +65,9 @@ Businesses advertise MCP transport availability through their UCP profile at
           "version": "2026-01-11",
           "spec": "https://example.vendor.com/specs/delegate-payment",
           "schema": "https://example.vendor.com/schemas/delegate-payment-config.json",
+          "available_instruments": [
+            {"type": "card", "constraints": {"brands": ["visa", "mastercard"]}}
+          ],
           "config": {}
         }
       ]
@@ -221,7 +224,7 @@ Maps to the [Create Checkout](checkout.md#create-checkout) operation.
               },
               "payment_handlers": {
                 "com.example.vendor.delegate_payment": [
-                  {"id": "handler_1", "version": "2026-01-11", "config": {}}
+                  {"id": "handler_1", "version": "2026-01-11", "available_instruments": [{"type": "card"}], "config": {}}
                 ]
               }
             },
@@ -338,6 +341,34 @@ Maps to the [Create Checkout](checkout.md#create-checkout) operation.
     }
     ```
 
+=== "Error Response"
+
+    All items out of stock — no checkout resource is created:
+
+    ```json
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "structuredContent": {
+          "ucp": { "version": "2026-01-11", "status": "error" },
+          "messages": [
+            {
+              "type": "error",
+              "code": "out_of_stock",
+              "content": "All requested items are currently out of stock",
+              "severity": "unrecoverable"
+            }
+          ],
+          "continue_url": "https://merchant.com/"
+        },
+        "content": [
+          {"type": "text", "text": "{\"ucp\":{...},\"messages\":[...]}"}
+        ]
+      }
+    }
+    ```
+
 ### `get_checkout`
 
 Maps to the [Get Checkout](checkout.md#get-checkout) operation.
@@ -444,7 +475,7 @@ Maps to the [Update Checkout](checkout.md#update-checkout) operation.
               },
               "payment_handlers": {
                 "com.example.vendor.delegate_payment": [
-                  {"id": "handler_1", "version": "2026-01-11", "config": {}}
+                  {"id": "handler_1", "version": "2026-01-11", "available_instruments": [{"type": "card"}], "config": {}}
                 ]
               }
             },
@@ -647,6 +678,34 @@ as JSON-RPC `result` with `structuredContent` containing the UCP envelope and
     },
     "content": [
       {"type": "text", "text": "{\"checkout\":{\"ucp\":{...},\"id\":\"checkout_abc123\",...}}"}
+    ]
+  }
+}
+```
+
+For `create_checkout`, when all items unavailable and no checkout can be created,
+JSON-RPC `result` with `structuredContent` containing the UCP envelope and `messages`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "structuredContent": {
+      "ucp": { "version": "2026-01-11", "status": "error" },
+      "messages": [
+        {
+          "type": "error",
+          "code": "item_unavailable",
+          "content": "Items are not available for purchase in your region",
+          "severity": "unrecoverable",
+          "path": "$.line_items"
+        }
+      ],
+      "continue_url": "https://merchant.com/"
+    },
+    "content": [
+      {"type": "text", "text": "{\"ucp\":{...},\"messages\":[...]}"}
     ]
   }
 }

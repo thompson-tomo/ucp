@@ -96,6 +96,9 @@ All REST endpoints **MUST** be served over HTTPS with minimum TLS version
             {
               "id": "shop_pay_1234",
               "version": "2026-01-11",
+              "available_instruments": [
+                {"type": "shop_pay"}
+              ],
               "config": {
                 "merchant_id": "shop_merchant_123"
               }
@@ -166,6 +169,28 @@ All REST endpoints **MUST** be served over HTTPS with minimum TLS version
     }
     ```
 
+=== "Error Response"
+
+    All items out of stock — no checkout resource is created:
+
+    ```json
+    HTTP/1.1 200 OK
+    Content-Type: application/json
+
+    {
+      "ucp": { "version": "2026-01-11", "status": "error" },
+      "messages": [
+        {
+          "type": "error",
+          "code": "out_of_stock",
+          "content": "All requested items are currently out of stock",
+          "severity": "unrecoverable"
+        }
+      ],
+      "continue_url": "https://merchant.com/"
+    }
+    ```
+
 ### Update Checkout
 
 #### Update Buyer Info
@@ -182,7 +207,7 @@ so clients must include all previously set fields they wish to retain.
     Content-Type: application/json
 
     {
-      "id": "chk_123456789",
+      "id": "chk_123456789", // deprecated: id is provided in URL path
       "buyer": {
         "email": "jane@example.com",
         "first_name": "Jane",
@@ -221,6 +246,9 @@ so clients must include all previously set fields they wish to retain.
             {
               "id": "shop_pay_1234",
               "version": "2026-01-11",
+              "available_instruments": [
+                {"type": "shop_pay"}
+              ],
               "config": {
                 "merchant_id": "shop_merchant_123"
               }
@@ -310,7 +338,7 @@ type & addresses.
     Content-Type: application/json
 
     {
-      "id": "chk_123456789",
+      "id": "chk_123456789", // deprecated: id is provided in URL path
       "buyer": {
         "email": "jane@example.com",
         "first_name": "Jane",
@@ -512,7 +540,7 @@ Follow-up calls after initial `fulfillment` data to update selection.
     Content-Type: application/json
 
     {
-      "id": "chk_123456789",
+      "id": "chk_123456789", // deprecated: id is provided in URL path
       "buyer": {
         "email": "jane@example.com",
         "first_name": "Jane",
@@ -577,6 +605,9 @@ Follow-up calls after initial `fulfillment` data to update selection.
             {
               "id": "shop_pay_1234",
               "version": "2026-01-11",
+              "available_instruments": [
+                {"type": "shop_pay"}
+              ],
               "config": {
                 "merchant_id": "shop_merchant_123"
               }
@@ -921,6 +952,9 @@ place to set these expectations via `messages`.
             {
               "id": "shop_pay_1234",
               "version": "2026-01-11",
+              "available_instruments": [
+                {"type": "shop_pay"}
+              ],
               "config": {
                 "merchant_id": "shop_merchant_123"
               }
@@ -1279,6 +1313,24 @@ with HTTP 200 and the UCP envelope containing `messages`:
     }
   ],
   "continue_url": "https://merchant.com/checkout/checkout_abc123"
+}
+```
+
+For `create_checkout`, when all items unavailable and no checkout can be created, returns
+HTTP 200 and the UCP envelope containing `messages`
+
+```json
+{
+  "ucp": { "version": "2026-01-11", "status": "error" },
+  "messages": [
+    {
+      "type": "error",
+      "code": "item_unavailable",
+      "content": "All items are not available for purchase",
+      "severity": "unrecoverable"
+    }
+  ],
+  "continue_url": "https://merchant.com/"
 }
 ```
 

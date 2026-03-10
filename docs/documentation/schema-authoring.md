@@ -110,9 +110,10 @@ Define transport bindings that appear in `ucp.services{}` registries. Each trans
 
 Define payment handler configurations in `ucp.payment_handlers{}` registries.
 
-- **Top-level fields**: `$schema`, `$id`, `title`, `description`, `name`, `version`
+- **Top-level fields**: `$schema`, `$id`, `title`, `description`, `name`, `version`, `available_instruments`
 - **Variants**: `platform_schema`, `business_schema`, `response_schema`
 - **Instance `id`**: Required to distinguish multiple configurations of the same handler
+- **`available_instruments`**: Optional. Array of supported instrument types with type-specific constraints (e.g., brands for credit cards). When absent, the handler places no restrictions — it supports the full set of instrument types defined by its handler schema.
 
 Examples: `com.google.pay`, `dev.shopify.shop_pay`, `dev.ucp.processor_tokenizer`
 
@@ -168,7 +169,7 @@ by `name` rather than arrays of objects with `name` fields.
     ]
   },
   "payment_handlers": {
-    "com.google.pay": [{"id": "gpay_1234", "version": "2026-01-11"}]
+    "com.google.pay": [{"id": "gpay_1234", "version": "2026-01-11", "available_instruments": [{"type": "google_pay_card"}]}]
   }
 }
 ```
@@ -254,6 +255,31 @@ Define all three in your schema's `$defs`:
   }
 }
 ```
+
+## String Vocabularies vs Enums
+
+Prefer **open string vocabularies** with documented well-known values over closed
+`enum` arrays. Enums are a one-way door: adding a new value is a breaking change
+for strict validators, and removing one breaks existing producers.
+
+```json
+// PREFER: open vocabulary — extensible without schema changes
+"type": {
+  "type": "string",
+  "description": "Media type. Well-known values: `image`, `video`, `model_3d`."
+}
+
+// AVOID: closed enum — adding `audio` requires a schema version bump
+"type": {
+  "type": "string",
+  "enum": ["image", "video", "model_3d"]
+}
+```
+
+**Use `enum` only for provably closed sets** where new values would represent a
+fundamental protocol change (e.g., `checkout.status: open | completed | expired`).
+If the set might grow as new use cases emerge, use an open string with well-known
+values documented in the `description`.
 
 ## Versioning Strategy
 

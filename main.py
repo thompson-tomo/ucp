@@ -101,7 +101,7 @@ def _resolve_schema(
       hyperlink generation in documentation.
 
   Returns:
-    Resolved schema as dict, or None if resolution fails.
+    Resolved schema as dict, or raises RuntimeError if ucp-schema fails.
 
   """
   bundle_suffix = ":bundled" if bundle else ""
@@ -121,20 +121,18 @@ def _resolve_schema(
   if bundle:
     cmd.append("--bundle")
 
-  try:
-    result = subprocess.run(
-      cmd,
-      capture_output=True,
-      text=True,
-      check=False,
-    )
-    if result.returncode == 0:
-      data = json.loads(result.stdout)
-      _resolved_schema_cache[cache_key] = data
-      return data
-  except subprocess.SubprocessError:
-    pass
-  return None
+  result = subprocess.run(
+    cmd,
+    capture_output=True,
+    text=True,
+    check=False,
+  )
+  if result.returncode == 0:
+    data = json.loads(result.stdout)
+    _resolved_schema_cache[cache_key] = data
+    return data
+  else:
+    raise RuntimeError(f"ucp-schema execution error: result = {result}")
 
 
 # Backward compatibility alias
@@ -283,7 +281,8 @@ def define_env(env):
 
     Args:
     ----
-      ref_string: e.g., "types/line_item.create_req.json"
+      ref_string: e.g., "types/line_item.create_req.json" or
+        "types/pagination.json#/$defs/response"
       spec_file_name: e.g., "checkout"
       context: Optional dict with 'io_type' (request/response) for polymorphic
         type handling.
@@ -302,7 +301,14 @@ def define_env(env):
     ):
       spec_file_name = "checkout"
 
-    filename = Path(ref_string).name
+    # Extract fragment identifier if present (e.g., #/$defs/response)
+    # This handles cases like "types/pagination.json#/$defs/response"
+    fragment = None
+    ref_path = ref_string
+    if "#/$defs/" in ref_string:
+      ref_path, fragment = ref_string.split("#/$defs/", 1)
+
+    filename = Path(ref_path).name
 
     # Check if this reference comes from the core UCP schema
     is_ucp = "ucp.json" in ref_string
@@ -314,9 +320,20 @@ def define_env(env):
 
     # 2. Generate Link Text (Visual)
     # e.g. "checkout_response" -> "Checkout Response"
-    link_text = (
-      raw_name.replace("_", " ").replace(".", " ").replace("-", " ").title()
-    )
+    # e.g. "pagination" + fragment "response" -> "Pagination Response"
+    if fragment:
+      base_text = (
+        raw_name.replace("_", " ").replace(".", " ").replace("-", " ").title()
+      )
+      fragment_text = (
+        fragment.replace("_", " ").replace(".", " ").replace("-", " ").title()
+      )
+      link_text = f"{base_text} {fragment_text}"
+    else:
+      link_text = (
+        raw_name.replace("_", " ").replace(".", " ").replace("-", " ").title()
+      )
+
     if link_text.endswith("Resp"):
       link_text = link_text.replace("Resp", "Response")
     elif link_text.endswith("Req"):
@@ -336,7 +353,15 @@ def define_env(env):
 
     anchor_name = base_entity.replace("_", "-")
 
-    if len(parts) > 1:
+    # Handle fragment in anchor
+    # e.g., pagination#/$defs/response -> pagination-response
+    if fragment:
+      fragment_anchor = fragment.replace("_", "-")
+      if anchor_name:  # External ref: base-fragment
+        anchor_name = f"{anchor_name}-{fragment_anchor}"
+      else:  # Internal ref like #/$defs/context: just use fragment
+        anchor_name = fragment_anchor
+    elif len(parts) > 1:
       variant = parts[1]
       variant_expanded = (
         variant.replace("create_req", "create-request")
