@@ -100,7 +100,7 @@ Maps to the [Create Cart](https://ucp.dev/draft/specification/cart/#create-cart)
 
 | Name         | Type                                                                            | Required | Description                                                                                                                                        |
 | ------------ | ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
+| ucp          | [Ucp Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
 | id           | string                                                                          | **Yes**  | Unique cart identifier.                                                                                                                            |
 | line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
 | context      | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)                     | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
@@ -208,6 +208,32 @@ Maps to the [Create Cart](https://ucp.dev/draft/specification/cart/#create-cart)
 }
 ```
 
+All items out of stock — no cart resource is created:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "structuredContent": {
+      "ucp": { "version": "2026-01-15", "status": "error" },
+      "messages": [
+        {
+          "type": "error",
+          "code": "out_of_stock",
+          "content": "All requested items are currently out of stock",
+          "severity": "unrecoverable"
+        }
+      ],
+      "continue_url": "https://merchant.com/"
+    },
+    "content": [
+      {"type": "text", "text": "{\"ucp\":{...},\"messages\":[...]}"}
+    ]
+  }
+}
+```
+
 ### `get_cart`
 
 Maps to the [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart) operation.
@@ -220,7 +246,7 @@ Maps to the [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart) opera
 
 | Name         | Type                                                                            | Required | Description                                                                                                                                        |
 | ------------ | ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
+| ucp          | [Ucp Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
 | id           | string                                                                          | **Yes**  | Unique cart identifier.                                                                                                                            |
 | line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
 | context      | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)                     | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
@@ -320,30 +346,21 @@ Maps to the [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart) opera
   "id": 1,
   "result": {
     "structuredContent": {
-      "cart": {
-        "ucp": {
-          "version": "2026-01-15",
-          "capabilities": [
-            {
-              "name": "dev.ucp.shopping.cart",
-              "version": "2026-01-15"
-            }
-          ]
-        },
-        "messages": [
-          {
-            "type": "error",
-            "code": "not_found",
-            "content": "Cart not found or has expired"
-          }
-        ],
-        "continue_url": "https://merchant.com/"
-      }
+      "ucp": { "version": "2026-01-15", "status": "error" },
+      "messages": [
+        {
+          "type": "error",
+          "code": "not_found",
+          "content": "Cart not found or has expired",
+          "severity": "unrecoverable"
+        }
+      ],
+      "continue_url": "https://merchant.com/"
     },
     "content": [
       {
         "type": "text",
-        "text": "{\"cart\":{\"ucp\":{...},\"messages\":[...],\"continue_url\":\"...\"}}"
+        "text": "{\"ucp\":{...},\"messages\":[...],\"continue_url\":\"...\"}"
       }
     ]
   }
@@ -369,7 +386,7 @@ Maps to the [Update Cart](https://ucp.dev/draft/specification/cart/#update-cart)
 
 | Name         | Type                                                                            | Required | Description                                                                                                                                        |
 | ------------ | ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
+| ucp          | [Ucp Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
 | id           | string                                                                          | **Yes**  | Unique cart identifier.                                                                                                                            |
 | line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
 | context      | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)                     | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
@@ -509,7 +526,7 @@ Maps to the [Cancel Cart](https://ucp.dev/draft/specification/cart/#cancel-cart)
 
 | Name         | Type                                                                            | Required | Description                                                                                                                                        |
 | ------------ | ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
+| ucp          | [Ucp Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
 | id           | string                                                                          | **Yes**  | Unique cart identifier.                                                                                                                            |
 | line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
 | context      | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)                     | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
@@ -620,25 +637,19 @@ Business outcomes (including not found and validation errors) are returned as JS
   "id": 1,
   "result": {
     "structuredContent": {
-      "cart": {
-        "ucp": {
-          "version": "2026-01-11",
-          "capabilities": {
-            "dev.ucp.shopping.cart": [{"version": "2026-01-11"}]
-          }
-        },
-        "messages": [
-          {
-            "type": "error",
-            "code": "not_found",
-            "content": "Cart not found or has expired"
-          }
-        ],
-        "continue_url": "https://merchant.com/"
-      }
+      "ucp": { "version": "2026-01-15", "status": "error" },
+      "messages": [
+        {
+          "type": "error",
+          "code": "not_found",
+          "content": "Cart not found or has expired",
+          "severity": "unrecoverable"
+        }
+      ],
+      "continue_url": "https://merchant.com/"
     },
     "content": [
-      {"type": "text", "text": "{\"cart\":{...}}"}
+      {"type": "text", "text": "{\"ucp\":{...},\"messages\":[...]}"}
     ]
   }
 }
